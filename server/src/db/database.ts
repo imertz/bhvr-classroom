@@ -1,6 +1,5 @@
 import { Database } from "bun:sqlite";
-// import { randomUUID } from "crypto";
-import { randomUUID } from "node:crypto";
+import { randomUUIDv7 as randomUUID } from "bun"
 import fs from "fs";
 import path from "path";
 import type { Teacher, TeacherInput } from "shared/src/types/teacher";
@@ -215,7 +214,16 @@ export async function createClass(data: ClassInput): Promise<Class> {
   const query = db.query(
     "INSERT INTO classes (id, name, subject, teacher_id, room_number, schedule, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *"
   );
-  return query.get(id, data.name, data.subject, data.teacher_id, data.room_number, data.schedule, now, now) as Class;
+  return query.get(
+    id,
+    data.name,
+    data.subject,
+    data.teacher_id,
+    data.room_number ?? null,
+    data.schedule ?? null,
+    now,
+    now
+  ) as Class;
 }
 
 /**
@@ -442,7 +450,14 @@ export async function createSubmission(data: SubmissionInput): Promise<Submissio
   const query = db.query(
     "INSERT INTO submissions (id, assignment_id, student_id, submitted_at, content, status) VALUES (?, ?, ?, ?, ?, ?) RETURNING *"
   );
-  return query.get(id, data.assignment_id, data.student_id, now, data.content, data.status || 'submitted') as Submission;
+  return query.get(
+    id,
+    data.assignment_id,
+    data.student_id,
+    now,
+    data.content ?? null,
+    data.status || 'submitted'
+  ) as Submission;
 }
 
 /**
@@ -517,7 +532,14 @@ export async function createGrade(data: GradeInput): Promise<Grade> {
   const query = db.query(
     "INSERT INTO grades (id, submission_id, points_earned, feedback, graded_at, graded_by) VALUES (?, ?, ?, ?, ?, ?) RETURNING *"
   );
-  return query.get(id, data.submission_id, data.points_earned, data.feedback, now, data.graded_by) as Grade;
+  return query.get(
+    id,
+    data.submission_id,
+    data.points_earned,
+    data.feedback ?? null,
+    now,
+    data.graded_by
+  ) as Grade;
 }
 
 /**
@@ -588,7 +610,15 @@ export async function createAttendance(data: AttendanceInput): Promise<Attendanc
   const query = db.query(
     "INSERT INTO attendance (id, student_id, class_id, date, status, notes, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *"
   );
-  return query.get(id, data.student_id, data.class_id, data.date, data.status, data.notes, now) as Attendance;
+  return query.get(
+    id,
+    data.student_id,
+    data.class_id,
+    data.date,
+    data.status,
+    data.notes ?? null,
+    now
+  ) as Attendance;
 }
 
 /**

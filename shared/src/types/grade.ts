@@ -8,7 +8,7 @@ export interface Grade {
   id: string
   submission_id: string
   points_earned: number
-  feedback: string | null
+  feedback?: string | null
   graded_at: string
   graded_by: string
 }

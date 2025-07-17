@@ -9,8 +9,8 @@ export interface Submission {
   assignment_id: string
   student_id: string
   submitted_at: string
-  content: string | null // JSON string
-  status: 'submitted' | 'graded' | 'returned'
+  content?: string | null // JSON string
+  status?: 'submitted' | 'graded' | 'returned'
 }
 
 /**

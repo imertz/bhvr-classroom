@@ -10,7 +10,7 @@ export interface Attendance {
   class_id: string
   date: string
   status: 'present' | 'absent' | 'tardy' | 'excused'
-  notes: string | null
+  notes?: string | null
   recorded_at: string
 }
 

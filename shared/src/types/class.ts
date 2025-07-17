@@ -9,8 +9,8 @@ export interface Class {
   name: string
   subject: string
   teacher_id: string
-  room_number: string | null
-  schedule: string | null // JSON string
+  room_number?: string | null
+  schedule?: string | null // JSON string
   created_at: string
   updated_at: string
 }
