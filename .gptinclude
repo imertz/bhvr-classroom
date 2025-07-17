@@ -1,0 +1,8 @@
+server/src/
+server/package.json
+server/tsconfig.json
+shared/src
+shared/package.json
+shared/tsconfig.json
+package.json
+tsconfig.json
