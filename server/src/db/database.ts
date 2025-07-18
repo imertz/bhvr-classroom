@@ -366,10 +366,15 @@ export async function deleteEnrollment(id: string): Promise<boolean> {
 export async function createAssignment(data: AssignmentInput): Promise<Assignment> {
   const now = new Date().toISOString();
   const id = randomUUID();
+  // Ensure due_date is stored as full ISO string, adding seconds if missing
+  let dueDateIso = data.due_date;
+  if (!/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(dueDateIso)) {
+    dueDateIso = dueDateIso + ':00';
+  }
   const query = db.query(
     "INSERT INTO assignments (id, class_id, title, description, type, points_possible, due_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *"
   );
-  return query.get(id, data.class_id, data.title, data.description, data.type, data.points_possible, data.due_date, now, now) as Assignment;
+  return query.get(id, data.class_id, data.title, data.description, data.type, data.points_possible, dueDateIso, now, now) as Assignment;
 }
 
 /**
@@ -404,8 +409,18 @@ export async function updateAssignment(id: string, data: Partial<AssignmentInput
 
   for (const [key, value] of Object.entries(data)) {
     if (value !== undefined) {
-      updateQuery += `, ${key.replace(/([A-Z])/g, "_$1").toLowerCase()} = ?`;
-      params.push(value);
+      if (key === 'due_date' && typeof value === 'string') {
+        // Normalize due_date to include seconds
+        let dueDateIso = value;
+        if (!/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(dueDateIso)) {
+          dueDateIso += ':00';
+        }
+        updateQuery += `, due_date = ?`;
+        params.push(dueDateIso);
+      } else {
+        updateQuery += `, ${key.replace(/([A-Z])/g, "_$1").toLowerCase()} = ?`;
+        params.push(value);
+      }
     }
   }
 

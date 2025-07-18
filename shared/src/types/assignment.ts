@@ -30,7 +30,8 @@ export const AssignmentSchema = z.object({
   description: z.string().optional(),
   type: z.enum(['homework', 'quiz', 'test', 'project']),
   points_possible: z.number().int(),
-  due_date: z.string().datetime(),
+  // Accept ISO-like datetime strings with minutes and optional seconds (e.g., YYYY-MM-DDTHH:MM or YYYY-MM-DDTHH:MM:SS)
+  due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/, { message: 'Invalid datetime' }),
 })
 
 /**
