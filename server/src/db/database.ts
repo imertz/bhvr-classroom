@@ -12,6 +12,24 @@ import type { Grade, GradeInput } from "shared/src/types/grade";
 import type { Attendance, AttendanceInput } from "shared/src/types/attendance";
 import type { Announcement, AnnouncementInput } from "shared/src/types/announcement";
 
+export interface RefreshToken {
+  id: string;
+  user_id: string;
+  user_type: 'teacher' | 'student';
+  token_hash: string;
+  expires_at: string;
+  created_at: string;
+  revoked_at?: string | null;
+}
+
+export interface RefreshTokenInput {
+  id: string;
+  user_id: string;
+  user_type: 'teacher' | 'student';
+  token_hash: string;
+  expires_at: string;
+}
+
 const DB_PATH = path.join(__dirname, "classroom.sqlite");
 let db: Database;
 
@@ -65,6 +83,16 @@ export async function createTeacher(data: TeacherInput): Promise<Teacher> {
 export async function findTeacherById(id: string): Promise<Teacher | null> {
   const query = db.query("SELECT * FROM teachers WHERE id = ?");
   return query.get(id) as Teacher | null;
+}
+
+/**
+ * Finds a teacher by their email.
+ * @param email - The email of the teacher to find.
+ * @returns The teacher if found, otherwise null.
+ */
+export async function findTeacherByEmail(email: string): Promise<Teacher | null> {
+  const query = db.query("SELECT * FROM teachers WHERE email = ?");
+  return query.get(email) as Teacher | null;
 }
 
 /**
@@ -140,6 +168,16 @@ export async function createStudent(data: StudentInput): Promise<Student> {
 export async function findStudentById(id: string): Promise<Student | null> {
   const query = db.query("SELECT * FROM students WHERE id = ?");
   return query.get(id) as Student | null;
+}
+
+/**
+ * Finds a student by their email.
+ * @param email - The email of the student to find.
+ * @returns The student if found, otherwise null.
+ */
+export async function findStudentByEmail(email: string): Promise<Student | null> {
+  const query = db.query("SELECT * FROM students WHERE email = ?");
+  return query.get(email) as Student | null;
 }
 
 /**
@@ -791,4 +829,39 @@ export async function deleteAnnouncement(id: string): Promise<boolean> {
   const query = db.query("DELETE FROM announcements WHERE id = ?");
   const result = query.run(id);
   return result.changes > 0;
+}
+
+// Refresh Token functions
+/**
+ * Stores a new refresh token in the database.
+ * @param data - The refresh token data to store.
+ * @returns The created refresh token.
+ */
+export async function storeRefreshToken(data: RefreshTokenInput): Promise<RefreshToken> {
+  const now = new Date().toISOString();
+  const query = db.query(
+    "INSERT INTO refresh_tokens (id, user_id, user_type, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING *"
+  );
+  return query.get(data.id, data.user_id, data.user_type, data.token_hash, data.expires_at, now) as RefreshToken;
+}
+
+/**
+ * Finds a refresh token by its ID.
+ * @param id - The ID of the refresh token to find.
+ * @returns The refresh token if found, otherwise null.
+ */
+export async function findRefreshTokenById(id: string): Promise<RefreshToken | null> {
+  const query = db.query("SELECT * FROM refresh_tokens WHERE id = ?");
+  return query.get(id) as RefreshToken | null;
+}
+
+/**
+ * Revokes a refresh token by its ID.
+ * @param id - The ID of the refresh token to revoke.
+ * @returns The updated refresh token, or null if not found.
+ */
+export async function revokeRefreshToken(id: string): Promise<RefreshToken | null> {
+  const now = new Date().toISOString();
+  const query = db.query("UPDATE refresh_tokens SET revoked_at = ? WHERE id = ? RETURNING *");
+  return query.get(now, id) as RefreshToken | null;
 }

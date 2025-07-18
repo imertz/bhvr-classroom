@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS teachers (
 CREATE TABLE IF NOT EXISTS students (
     id TEXT PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
+    password_hash TEXT,
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
     date_of_birth TEXT NOT NULL,
@@ -123,3 +124,23 @@ CREATE INDEX IF NOT EXISTS idx_submissions_student ON submissions(student_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_student ON attendance(student_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_class ON attendance(class_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
+
+-- Create indexes for refresh tokens
+CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id, user_type);
+CREATE INDEX idx_refresh_tokens_expires ON refresh_tokens(expires_at);
+
+-- Add role columns
+ALTER TABLE teachers ADD COLUMN role TEXT DEFAULT 'teacher';
+ALTER TABLE students ADD COLUMN role TEXT DEFAULT 'student';
+
+-- Create refresh_tokens table
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    user_type TEXT NOT NULL, -- 'teacher' or 'student'
+    token_hash TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    revoked_at TEXT,
+    UNIQUE(token_hash)
+);
