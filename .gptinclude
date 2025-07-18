@@ -2,6 +2,12 @@ server/src/
 server/package.json
 server/tsconfig.json
 server/README.md
+client/src
+client/package.json
+client/tsconfig.json
+client/README.md
+client/components.json
+client/vite.config.ts
 shared/src
 shared/package.json
 shared/tsconfig.json

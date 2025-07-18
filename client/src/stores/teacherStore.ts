@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import type { Teacher, TeacherInput } from 'shared/dist';
 import type { ApiState, PaginatedData } from './types';
-
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+import { api } from '../lib/api';
+import { getErrorMessage } from '../lib/errorUtils';
 
 interface TeacherStore extends ApiState {
   teachers: Teacher[];
@@ -26,79 +26,52 @@ export const useTeacherStore = create<TeacherStore>((set, get) => ({
   fetchTeachers: async () => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/teachers`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch teachers');
-      }
-      const result = await response.json() as PaginatedData<Teacher>;
-      set({ teachers: result.data, loading: false });
-    } catch (error) {
-      set({ error: error instanceof Error ? error.message : 'Unknown error', loading: false });
+      const response = await api.get<PaginatedData<Teacher>>('/teachers');
+      set({ teachers: response.data.data, loading: false });
+    } catch (error: any) {
+      set({ error: getErrorMessage(error, 'Failed to fetch teachers'), loading: false });
     }
   },
 
   fetchTeacher: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/teachers/${id}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch teacher');
-      }
-      const result = await response.json() as { data: Teacher };
-      set({ currentTeacher: result.data, loading: false });
-    } catch (error) {
-      set({ error: error instanceof Error ? error.message : 'Unknown error', loading: false });
+      const response = await api.get<{ data: Teacher }>(`/teachers/${id}`);
+      set({ currentTeacher: response.data.data, loading: false });
+    } catch (error: any) {
+      set({ error: getErrorMessage(error, 'Failed to fetch teacher'), loading: false });
     }
   },
 
   createTeacher: async (data: TeacherInput) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/teachers`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create teacher');
-      }
+      await api.post('/teachers', data);
       // Refresh the teachers list
       await get().fetchTeachers();
-    } catch (error) {
-      set({ error: error instanceof Error ? error.message : 'Unknown error', loading: false });
+    } catch (error: any) {
+      set({ error: getErrorMessage(error, 'Failed to create teacher'), loading: false });
     }
   },
 
   updateTeacher: async (id: string, data: Partial<TeacherInput>) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/teachers/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update teacher');
-      }
+      await api.put(`/teachers/${id}`, data);
       // Refresh the teachers list and current teacher if it's the one being updated
       await get().fetchTeachers();
       if (get().currentTeacher?.id === id) {
         await get().fetchTeacher(id);
       }
-    } catch (error) {
-      set({ error: error instanceof Error ? error.message : 'Unknown error', loading: false });
+    } catch (error: any) {
+      set({ error: getErrorMessage(error, 'Failed to update teacher'), loading: false });
     }
   },
 
   deleteTeacher: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/teachers/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete teacher');
-      }
+      await api.delete(`/teachers/${id}`);
       // Remove from local state and clear current teacher if it was deleted
       const { teachers, currentTeacher } = get();
       set({
@@ -106,8 +79,8 @@ export const useTeacherStore = create<TeacherStore>((set, get) => ({
         currentTeacher: currentTeacher?.id === id ? null : currentTeacher,
         loading: false
       });
-    } catch (error) {
-      set({ error: error instanceof Error ? error.message : 'Unknown error', loading: false });
+    } catch (error: any) {
+      set({ error: getErrorMessage(error, 'Failed to delete teacher'), loading: false });
     }
   },
 
