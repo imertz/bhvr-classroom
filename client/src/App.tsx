@@ -8,6 +8,9 @@ import ClassesPage from './pages/ClassesPage';
 import AssignmentsPage from './pages/AssignmentsPage';
 import AttendancePage from './pages/AttendancePage';
 import GradesPage from './pages/GradesPage';
+import AnnouncementsPage from './pages/AnnouncementsPage';
+import SubmissionsPage from './pages/SubmissionsPage';
+import EnrollmentsPage from './pages/EnrollmentsPage';
 
 function App() {
   return (
@@ -21,6 +24,9 @@ function App() {
           <Route path="students" element={<StudentsPage />} />
           <Route path="classes" element={<ClassesPage />} />
           <Route path="assignments" element={<AssignmentsPage />} />
+          <Route path="announcements" element={<AnnouncementsPage />} />
+          <Route path="submissions" element={<SubmissionsPage />} />
+          <Route path="enrollments" element={<EnrollmentsPage />} />
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="grades" element={<GradesPage />} />
         </Route>

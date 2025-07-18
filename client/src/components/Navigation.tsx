@@ -10,6 +10,9 @@ export default function Navigation() {
     { path: '/students', label: 'Students' },
     { path: '/classes', label: 'Classes' },
     { path: '/assignments', label: 'Assignments' },
+    { path: '/announcements', label: 'Announcements' },
+    { path: '/submissions', label: 'Submissions' },
+    { path: '/enrollments', label: 'Enrollments' },
     { path: '/attendance', label: 'Attendance' },
     { path: '/grades', label: 'Grades' },
   ];
@@ -24,13 +27,14 @@ export default function Navigation() {
             </div>
           </Link>
           
-          <div className="flex space-x-4">
+          <div className="flex space-x-2 overflow-x-auto">
             {navItems.map((item) => (
               <Button
                 key={item.path}
                 asChild
                 variant={location.pathname === item.path ? "default" : "ghost"}
                 size="sm"
+                className="whitespace-nowrap"
               >
                 <Link to={item.path}>{item.label}</Link>
               </Button>
