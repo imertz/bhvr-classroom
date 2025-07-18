@@ -27,7 +27,8 @@ export const AnnouncementSchema = z.object({
   teacher_id: z.string(),
   title: z.string(),
   content: z.string(),
-  expires_at: z.string().datetime().nullable().default(null),
+  // Accept ISO-like datetime strings with minutes and optional seconds (e.g., YYYY-MM-DDTHH:MM or YYYY-MM-DDTHH:MM:SS)
+  expires_at: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/, { message: 'Invalid datetime' }).nullable().default(null),
 })
 
 /**

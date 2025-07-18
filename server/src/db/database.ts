@@ -701,10 +701,26 @@ export async function deleteAttendance(id: string): Promise<boolean> {
 export async function createAnnouncement(data: AnnouncementInput): Promise<Announcement> {
   const now = new Date().toISOString();
   const id = randomUUID();
+  // Normalize expires_at to include seconds if provided, otherwise allow null
+  let expiresIso = null;
+  if (data.expires_at) {
+    expiresIso = data.expires_at;
+    if (typeof expiresIso === 'string' && !/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(expiresIso)) {
+      expiresIso = expiresIso + ':00';
+    }
+  }
   const query = db.query(
     "INSERT INTO announcements (id, class_id, teacher_id, title, content, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *"
   );
-  return query.get(id, data.class_id, data.teacher_id, data.title, data.content, now, data.expires_at) as Announcement;
+  return query.get(
+    id,
+    data.class_id,
+    data.teacher_id,
+    data.title,
+    data.content,
+    now,
+    expiresIso
+  ) as Announcement;
 }
 
 /**
@@ -739,8 +755,23 @@ export async function updateAnnouncement(id: string, data: Partial<AnnouncementI
 
   for (const [key, value] of Object.entries(data)) {
     if (value !== undefined) {
-      updateQuery += `, ${key.replace(/([A-Z])/g, "_$1").toLowerCase()} = ?`;
-      params.push(value);
+      if (key === 'expires_at') {
+        // Normalize expires_at to include seconds if provided, otherwise allow null
+        if (value) {
+          let expiresIso = value as string;
+          if (!/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(expiresIso)) {
+            expiresIso = expiresIso + ':00';
+          }
+          updateQuery += `, expires_at = ?`;
+          params.push(expiresIso);
+        } else {
+          updateQuery += `, expires_at = ?`;
+          params.push(null);
+        }
+      } else {
+        updateQuery += `, ${key.replace(/([A-Z])/g, "_$1").toLowerCase()} = ?`;
+        params.push(value);
+      }
     }
   }
 
