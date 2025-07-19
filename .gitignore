@@ -151,4 +151,4 @@ server/dist/
 shared/dist/
 
 
-.claude/
+.claude/settings.local.json
