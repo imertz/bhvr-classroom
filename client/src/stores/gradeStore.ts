@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import type { Grade, GradeInput } from 'shared/dist';
 import type { ApiState, PaginatedData } from './types';
-
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+import { api } from '../lib/api';
 
 interface GradeStore extends ApiState {
   grades: Grade[];
@@ -26,12 +25,8 @@ export const useGradeStore = create<GradeStore>((set, get) => ({
   fetchGrades: async () => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/grades`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch grades');
-      }
-      const result = await response.json() as PaginatedData<Grade>;
-      set({ grades: result.data, loading: false });
+      const response = await api.get<PaginatedData<Grade>>('/api/grades');
+      set({ grades: response.data.data, loading: false });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Unknown error', loading: false });
     }
@@ -40,12 +35,8 @@ export const useGradeStore = create<GradeStore>((set, get) => ({
   fetchGrade: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/grades/${id}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch grade');
-      }
-      const result = await response.json() as { data: Grade };
-      set({ currentGrade: result.data, loading: false });
+      const response = await api.get<{ data: Grade }>(`/api/grades/${id}`);
+      set({ currentGrade: response.data.data, loading: false });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Unknown error', loading: false });
     }
@@ -54,14 +45,7 @@ export const useGradeStore = create<GradeStore>((set, get) => ({
   createGrade: async (data: GradeInput) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/grades`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create grade');
-      }
+      await api.post('/api/grades', data);
       // Refresh the grades list
       await get().fetchGrades();
     } catch (error) {
@@ -72,14 +56,7 @@ export const useGradeStore = create<GradeStore>((set, get) => ({
   updateGrade: async (id: string, data: Partial<GradeInput>) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/grades/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update grade');
-      }
+      await api.put(`/api/grades/${id}`, data);
       // Refresh the grades list
       await get().fetchGrades();
     } catch (error) {
@@ -90,12 +67,7 @@ export const useGradeStore = create<GradeStore>((set, get) => ({
   deleteGrade: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/grades/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete grade');
-      }
+      await api.delete(`/api/grades/${id}`);
       // Refresh the grades list
       await get().fetchGrades();
     } catch (error) {

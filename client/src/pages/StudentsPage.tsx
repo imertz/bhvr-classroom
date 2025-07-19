@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useStudentStore } from '../stores';
 import { Button } from '../components/ui/button';
+import { usePermissions } from '../hooks/usePermissions';
 import type { Student } from 'shared/dist';
 
 export default function StudentsPage() {
@@ -13,6 +14,7 @@ export default function StudentsPage() {
     deleteStudent, 
     clearError 
   } = useStudentStore();
+  const { canCreate, canEdit, canDelete, isAuthenticated } = usePermissions();
 
   useEffect(() => {
     fetchStudents();
@@ -32,9 +34,11 @@ export default function StudentsPage() {
     <div className="max-w-4xl mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Students</h1>
-        <Button asChild>
-          <Link to="/students/new">Add Student</Link>
-        </Button>
+        {canCreate && (
+          <Button asChild>
+            <Link to="/students/new">Add Student</Link>
+          </Button>
+        )}
       </div>
 
       {error && (
@@ -65,9 +69,11 @@ export default function StudentsPage() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Date of Birth
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
+              {(canEdit || canDelete) && (
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -89,26 +95,26 @@ export default function StudentsPage() {
                     {new Date(student.date_of_birth).toLocaleDateString()}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <Link 
-                    to={`/students/${student.id}`}
-                    className="text-indigo-600 hover:text-indigo-900 mr-4"
-                  >
-                    View
-                  </Link>
-                  <Link 
-                    to={`/students/${student.id}/edit`}
-                    className="text-indigo-600 hover:text-indigo-900 mr-4"
-                  >
-                    Edit
-                  </Link>
-                  <button
-                    onClick={() => handleDelete(student.id)}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    Delete
-                  </button>
-                </td>
+                {(canEdit || canDelete) && (
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    {canEdit && (
+                      <Link 
+                        to={`/students/${student.id}/edit`}
+                        className="text-indigo-600 hover:text-indigo-900 mr-4"
+                      >
+                        Edit
+                      </Link>
+                    )}
+                    {canDelete && (
+                      <button
+                        onClick={() => handleDelete(student.id)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -116,7 +122,18 @@ export default function StudentsPage() {
         
         {students.length === 0 && !loading && (
           <div className="text-center py-8 text-gray-500">
-            No students found. <Link to="/students/new" className="text-indigo-600 hover:text-indigo-900">Add the first student</Link>
+            No students found.{' '}
+            {canCreate ? (
+              <Link to="/students/new" className="text-indigo-600 hover:text-indigo-900">
+                Add the first student
+              </Link>
+            ) : isAuthenticated ? (
+              <span>Contact an administrator to add students.</span>
+            ) : (
+              <Link to="/login" className="text-indigo-600 hover:text-indigo-900">
+                Login to manage students
+              </Link>
+            )}
           </div>
         )}
       </div>

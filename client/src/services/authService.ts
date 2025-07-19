@@ -6,6 +6,13 @@ export interface LoginCredentials {
   password: string;
 }
 
+export interface RegistrationData {
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+}
+
 export interface LoginResponse {
   user: AuthUser;
   accessToken: string;
@@ -29,6 +36,14 @@ export const authService = {
    */
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     const response = await api.post<LoginResponse>('/auth/teacher/login', credentials);
+    return response.data;
+  },
+
+  /**
+   * Register a new teacher account
+   */
+  async register(data: RegistrationData): Promise<LoginResponse> {
+    const response = await api.post<LoginResponse>('/auth/teacher/register', data);
     return response.data;
   },
 

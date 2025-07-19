@@ -3,6 +3,7 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import AuthProvider from './components/AuthProvider';
 import LoginPage from './pages/LoginPage';
+import RegistrationPage from './pages/RegistrationPage';
 import HomePage from './pages/HomePage';
 import TeachersPage from './pages/TeachersPage';
 import TeacherFormPage from './pages/TeacherFormPage';
@@ -24,29 +25,53 @@ function App() {
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegistrationPage />} />
           
-          {/* Protected routes */}
-          <Route path="/" element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }>
+          {/* Public and protected routes */}
+          <Route path="/" element={<Layout />}>
+            {/* Public read-only access to list pages */}
             <Route index element={<HomePage />} />
             <Route path="teachers" element={<TeachersPage />} />
-            <Route path="teachers/new" element={<TeacherFormPage />} />
-            <Route path="teachers/:id/edit" element={<TeacherFormPage />} />
             <Route path="students" element={<StudentsPage />} />
-            <Route path="students/new" element={<StudentFormPage />} />
-            <Route path="students/:id/edit" element={<StudentFormPage />} />
             <Route path="classes" element={<ClassesPage />} />
-            <Route path="classes/new" element={<ClassFormPage />} />
-            <Route path="classes/:id/edit" element={<ClassFormPage />} />
             <Route path="assignments" element={<AssignmentsPage />} />
             <Route path="announcements" element={<AnnouncementsPage />} />
             <Route path="submissions" element={<SubmissionsPage />} />
             <Route path="enrollments" element={<EnrollmentsPage />} />
             <Route path="attendance" element={<AttendancePage />} />
             <Route path="grades" element={<GradesPage />} />
+            
+            {/* Protected form routes - require authentication */}
+            <Route path="teachers/new" element={
+              <ProtectedRoute>
+                <TeacherFormPage />
+              </ProtectedRoute>
+            } />
+            <Route path="teachers/:id/edit" element={
+              <ProtectedRoute>
+                <TeacherFormPage />
+              </ProtectedRoute>
+            } />
+            <Route path="students/new" element={
+              <ProtectedRoute>
+                <StudentFormPage />
+              </ProtectedRoute>
+            } />
+            <Route path="students/:id/edit" element={
+              <ProtectedRoute>
+                <StudentFormPage />
+              </ProtectedRoute>
+            } />
+            <Route path="classes/new" element={
+              <ProtectedRoute>
+                <ClassFormPage />
+              </ProtectedRoute>
+            } />
+            <Route path="classes/:id/edit" element={
+              <ProtectedRoute>
+                <ClassFormPage />
+              </ProtectedRoute>
+            } />
           </Route>
         </Routes>
       </Router>

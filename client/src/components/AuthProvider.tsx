@@ -6,14 +6,12 @@ interface AuthProviderProps {
 }
 
 export default function AuthProvider({ children }: AuthProviderProps) {
-  const { checkAuth, isAuthenticated } = useAuthStore();
+  const checkAuth = useAuthStore((state) => state.checkAuth);
 
   useEffect(() => {
-    // Check authentication status when app loads
-    if (!isAuthenticated) {
-      checkAuth();
-    }
-  }, [checkAuth, isAuthenticated]);
+    // Always check authentication status when app loads
+    checkAuth();
+  }, [checkAuth]);
 
   return <>{children}</>;
 }

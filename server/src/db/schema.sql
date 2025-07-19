@@ -125,17 +125,6 @@ CREATE INDEX IF NOT EXISTS idx_attendance_student ON attendance(student_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_class ON attendance(class_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
 
--- Create indexes for refresh tokens
-CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id, user_type);
-CREATE INDEX idx_refresh_tokens_expires ON refresh_tokens(expires_at);
-
--- Create indexes for role-based queries
-CREATE INDEX IF NOT EXISTS idx_teachers_role ON teachers(role);
-
--- Add role columns with constraints
-ALTER TABLE teachers ADD COLUMN role TEXT DEFAULT 'teacher' CHECK (role IN ('teacher', 'admin'));
-ALTER TABLE students ADD COLUMN role TEXT DEFAULT 'student' CHECK (role IN ('student'));
-
 -- Create refresh_tokens table
 CREATE TABLE IF NOT EXISTS refresh_tokens (
     id TEXT PRIMARY KEY,
@@ -147,3 +136,14 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
     revoked_at TEXT,
     UNIQUE(token_hash)
 );
+
+-- Create indexes for refresh tokens
+CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id, user_type);
+CREATE INDEX idx_refresh_tokens_expires ON refresh_tokens(expires_at);
+
+-- Add role columns with constraints
+ALTER TABLE teachers ADD COLUMN role TEXT DEFAULT 'teacher' CHECK (role IN ('teacher', 'admin'));
+ALTER TABLE students ADD COLUMN role TEXT DEFAULT 'student' CHECK (role IN ('student'));
+
+-- Create indexes for role-based queries
+CREATE INDEX IF NOT EXISTS idx_teachers_role ON teachers(role);

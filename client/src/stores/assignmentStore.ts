@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import type { Assignment, AssignmentInput } from 'shared/dist';
 import type { ApiState, PaginatedData } from './types';
-
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+import { api } from '../lib/api';
 
 interface AssignmentStore extends ApiState {
   assignments: Assignment[];
@@ -26,12 +25,8 @@ export const useAssignmentStore = create<AssignmentStore>((set, get) => ({
   fetchAssignments: async () => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/assignments`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch assignments');
-      }
-      const result = await response.json() as PaginatedData<Assignment>;
-      set({ assignments: result.data, loading: false });
+      const response = await api.get<PaginatedData<Assignment>>('/api/assignments');
+      set({ assignments: response.data.data, loading: false });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Unknown error', loading: false });
     }
@@ -40,12 +35,8 @@ export const useAssignmentStore = create<AssignmentStore>((set, get) => ({
   fetchAssignment: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/assignments/${id}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch assignment');
-      }
-      const result = await response.json() as { data: Assignment };
-      set({ currentAssignment: result.data, loading: false });
+      const response = await api.get<{ data: Assignment }>(`/api/assignments/${id}`);
+      set({ currentAssignment: response.data.data, loading: false });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Unknown error', loading: false });
     }
@@ -54,14 +45,7 @@ export const useAssignmentStore = create<AssignmentStore>((set, get) => ({
   createAssignment: async (data: AssignmentInput) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/assignments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create assignment');
-      }
+      await api.post('/api/assignments', data);
       // Refresh the assignments list
       await get().fetchAssignments();
     } catch (error) {
@@ -72,14 +56,7 @@ export const useAssignmentStore = create<AssignmentStore>((set, get) => ({
   updateAssignment: async (id: string, data: Partial<AssignmentInput>) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/assignments/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update assignment');
-      }
+      await api.put(`/api/assignments/${id}`, data);
       // Refresh the assignments list
       await get().fetchAssignments();
     } catch (error) {
@@ -90,12 +67,7 @@ export const useAssignmentStore = create<AssignmentStore>((set, get) => ({
   deleteAssignment: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/assignments/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete assignment');
-      }
+      await api.delete(`/api/assignments/${id}`);
       // Refresh the assignments list
       await get().fetchAssignments();
     } catch (error) {

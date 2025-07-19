@@ -26,7 +26,7 @@ export const useTeacherStore = create<TeacherStore>((set, get) => ({
   fetchTeachers: async () => {
     set({ loading: true, error: null });
     try {
-      const response = await api.get<PaginatedData<Teacher>>('/teachers');
+      const response = await api.get<PaginatedData<Teacher>>('/api/teachers');
       set({ teachers: response.data.data, loading: false });
     } catch (error: any) {
       set({ error: getErrorMessage(error, 'Failed to fetch teachers'), loading: false });
@@ -36,7 +36,7 @@ export const useTeacherStore = create<TeacherStore>((set, get) => ({
   fetchTeacher: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const response = await api.get<{ data: Teacher }>(`/teachers/${id}`);
+      const response = await api.get<{ data: Teacher }>(`/api/teachers/${id}`);
       set({ currentTeacher: response.data.data, loading: false });
     } catch (error: any) {
       set({ error: getErrorMessage(error, 'Failed to fetch teacher'), loading: false });
@@ -46,7 +46,7 @@ export const useTeacherStore = create<TeacherStore>((set, get) => ({
   createTeacher: async (data: TeacherInput) => {
     set({ loading: true, error: null });
     try {
-      await api.post('/teachers', data);
+      await api.post('/api/teachers', data);
       // Refresh the teachers list
       await get().fetchTeachers();
     } catch (error: any) {
@@ -57,7 +57,7 @@ export const useTeacherStore = create<TeacherStore>((set, get) => ({
   updateTeacher: async (id: string, data: Partial<TeacherInput>) => {
     set({ loading: true, error: null });
     try {
-      await api.put(`/teachers/${id}`, data);
+      await api.put(`/api/teachers/${id}`, data);
       // Refresh the teachers list and current teacher if it's the one being updated
       await get().fetchTeachers();
       if (get().currentTeacher?.id === id) {
@@ -71,7 +71,7 @@ export const useTeacherStore = create<TeacherStore>((set, get) => ({
   deleteTeacher: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      await api.delete(`/teachers/${id}`);
+      await api.delete(`/api/teachers/${id}`);
       // Remove from local state and clear current teacher if it was deleted
       const { teachers, currentTeacher } = get();
       set({

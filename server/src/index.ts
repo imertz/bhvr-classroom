@@ -26,7 +26,10 @@ initializeDatabase();
 initializeAdminUser();
 
 export const app = new Hono<{ Variables: AuthVariables }>()
-	.use(cors())
+	.use(cors({
+		origin: 'http://localhost:5173',
+		credentials: true,
+	}))
 	.use(errorMiddleware)
 
 // Public routes

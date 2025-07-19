@@ -23,7 +23,8 @@ export default function TeacherFormPage() {
     email: '',
     first_name: '',
     last_name: '',
-    password: ''
+    password: '',
+    role: 'teacher'
   });
 
   useEffect(() => {
@@ -38,7 +39,8 @@ export default function TeacherFormPage() {
         email: currentTeacher.email,
         first_name: currentTeacher.first_name,
         last_name: currentTeacher.last_name,
-        password: '' // Don't pre-fill password for security
+        password: '', // Don't pre-fill password for security
+        role: currentTeacher.role
       });
     }
   }, [isEditing, currentTeacher]);

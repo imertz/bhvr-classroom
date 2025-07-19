@@ -5,7 +5,10 @@
       "Bash(timeout:*)",
       "Bash(true)",
       "Bash(ls:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(find:*)",
+      "Bash(pkill:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }

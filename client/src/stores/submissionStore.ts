@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import type { Submission, SubmissionInput } from 'shared/dist';
 import type { ApiState, PaginatedData } from './types';
-
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+import { api } from '../lib/api';
 
 interface SubmissionStore extends ApiState {
   submissions: Submission[];
@@ -26,12 +25,8 @@ export const useSubmissionStore = create<SubmissionStore>((set, get) => ({
   fetchSubmissions: async () => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/submissions`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch submissions');
-      }
-      const result = await response.json() as PaginatedData<Submission>;
-      set({ submissions: result.data, loading: false });
+      const response = await api.get<PaginatedData<Submission>>('/api/submissions');
+      set({ submissions: response.data.data, loading: false });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Unknown error', loading: false });
     }
@@ -40,12 +35,8 @@ export const useSubmissionStore = create<SubmissionStore>((set, get) => ({
   fetchSubmission: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/submissions/${id}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch submission');
-      }
-      const result = await response.json() as { data: Submission };
-      set({ currentSubmission: result.data, loading: false });
+      const response = await api.get<{ data: Submission }>(`/api/submissions/${id}`);
+      set({ currentSubmission: response.data.data, loading: false });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Unknown error', loading: false });
     }
@@ -54,14 +45,7 @@ export const useSubmissionStore = create<SubmissionStore>((set, get) => ({
   createSubmission: async (data: SubmissionInput) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/submissions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create submission');
-      }
+      await api.post('/api/submissions', data);
       // Refresh the submissions list
       await get().fetchSubmissions();
     } catch (error) {
@@ -72,14 +56,7 @@ export const useSubmissionStore = create<SubmissionStore>((set, get) => ({
   updateSubmission: async (id: string, data: Partial<SubmissionInput>) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/submissions/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update submission');
-      }
+      await api.put(`/api/submissions/${id}`, data);
       // Refresh the submissions list
       await get().fetchSubmissions();
     } catch (error) {
@@ -90,12 +67,7 @@ export const useSubmissionStore = create<SubmissionStore>((set, get) => ({
   deleteSubmission: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/submissions/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete submission');
-      }
+      await api.delete(`/api/submissions/${id}`);
       // Refresh the submissions list
       await get().fetchSubmissions();
     } catch (error) {

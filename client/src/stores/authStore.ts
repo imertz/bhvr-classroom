@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AuthUser } from '../../../server/src/types/auth';
-import { authService, type LoginCredentials } from '../services/authService';
+import { authService, type LoginCredentials, type RegistrationData } from '../services/authService';
 
 interface AuthState {
   user: AuthUser | null;
@@ -13,6 +13,7 @@ interface AuthState {
 
   // Actions
   login: (credentials: LoginCredentials) => Promise<void>;
+  register: (data: RegistrationData) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   refreshAccessToken: () => Promise<void>;
@@ -66,6 +67,35 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
+      register: async (data: RegistrationData) => {
+        set({ isLoading: true, error: null });
+        try {
+          const response = await authService.register(data);
+
+          // Calculate token expiration (15 minutes from now)
+          const expiresAt = Date.now() + (15 * 60 * 1000);
+
+          set({
+            user: response.user,
+            accessToken: response.accessToken,
+            isAuthenticated: true,
+            isLoading: false,
+            error: null,
+            tokenExpiresAt: expiresAt,
+          });
+
+          // Start the token refresh timer
+          get().startTokenRefreshTimer();
+        } catch (error) {
+          set({
+            error: error instanceof Error ? error.message : 'Registration failed',
+            isLoading: false,
+            isAuthenticated: false,
+          });
+          throw error;
+        }
+      },
+
       logout: async () => {
         set({ isLoading: true, error: null });
         try {
@@ -89,7 +119,14 @@ export const useAuthStore = create<AuthState>()(
       },
 
       checkAuth: async () => {
-        const { accessToken } = get();
+        const { accessToken, isAuthenticated } = get();
+        
+        // If we think we're authenticated but have no access token, clear auth state
+        if (isAuthenticated && !accessToken) {
+          get().clearAuth();
+          return;
+        }
+
         if (!accessToken) {
           // Try to refresh token if we don't have an access token
           try {

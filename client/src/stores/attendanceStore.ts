@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import type { Attendance, AttendanceInput } from 'shared/dist';
 import type { ApiState, PaginatedData } from './types';
-
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+import { api } from '../lib/api';
 
 interface AttendanceStore extends ApiState {
   attendances: Attendance[];
@@ -26,12 +25,8 @@ export const useAttendanceStore = create<AttendanceStore>((set, get) => ({
   fetchAttendances: async () => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/attendance`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch attendances');
-      }
-      const result = await response.json() as PaginatedData<Attendance>;
-      set({ attendances: result.data, loading: false });
+      const response = await api.get<PaginatedData<Attendance>>('/api/attendance');
+      set({ attendances: response.data.data, loading: false });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Unknown error', loading: false });
     }
@@ -40,12 +35,8 @@ export const useAttendanceStore = create<AttendanceStore>((set, get) => ({
   fetchAttendance: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/attendance/${id}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch attendance');
-      }
-      const result = await response.json() as { data: Attendance };
-      set({ currentAttendance: result.data, loading: false });
+      const response = await api.get<{ data: Attendance }>(`/api/attendance/${id}`);
+      set({ currentAttendance: response.data.data, loading: false });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Unknown error', loading: false });
     }
@@ -54,14 +45,7 @@ export const useAttendanceStore = create<AttendanceStore>((set, get) => ({
   createAttendance: async (data: AttendanceInput) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/attendance`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create attendance');
-      }
+      await api.post('/api/attendance', data);
       // Refresh the attendances list
       await get().fetchAttendances();
     } catch (error) {
@@ -72,14 +56,7 @@ export const useAttendanceStore = create<AttendanceStore>((set, get) => ({
   updateAttendance: async (id: string, data: Partial<AttendanceInput>) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/attendance/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update attendance');
-      }
+      await api.put(`/api/attendance/${id}`, data);
       // Refresh the attendances list
       await get().fetchAttendances();
     } catch (error) {
@@ -90,12 +67,7 @@ export const useAttendanceStore = create<AttendanceStore>((set, get) => ({
   deleteAttendance: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/attendance/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete attendance');
-      }
+      await api.delete(`/api/attendance/${id}`);
       // Refresh the attendances list
       await get().fetchAttendances();
     } catch (error) {

@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import type { Enrollment, EnrollmentInput } from 'shared/dist';
 import type { ApiState, PaginatedData } from './types';
-
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+import { api } from '../lib/api';
 
 interface EnrollmentStore extends ApiState {
   enrollments: Enrollment[];
@@ -26,12 +25,8 @@ export const useEnrollmentStore = create<EnrollmentStore>((set, get) => ({
   fetchEnrollments: async () => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/enrollments`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch enrollments');
-      }
-      const result = await response.json() as PaginatedData<Enrollment>;
-      set({ enrollments: result.data, loading: false });
+      const response = await api.get<PaginatedData<Enrollment>>('/api/enrollments');
+      set({ enrollments: response.data.data, loading: false });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Unknown error', loading: false });
     }
@@ -40,12 +35,8 @@ export const useEnrollmentStore = create<EnrollmentStore>((set, get) => ({
   fetchEnrollment: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/enrollments/${id}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch enrollment');
-      }
-      const result = await response.json() as { data: Enrollment };
-      set({ currentEnrollment: result.data, loading: false });
+      const response = await api.get<{ data: Enrollment }>(`/api/enrollments/${id}`);
+      set({ currentEnrollment: response.data.data, loading: false });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Unknown error', loading: false });
     }
@@ -54,14 +45,7 @@ export const useEnrollmentStore = create<EnrollmentStore>((set, get) => ({
   createEnrollment: async (data: EnrollmentInput) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/enrollments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create enrollment');
-      }
+      await api.post('/api/enrollments', data);
       // Refresh the enrollments list
       await get().fetchEnrollments();
     } catch (error) {
@@ -72,14 +56,7 @@ export const useEnrollmentStore = create<EnrollmentStore>((set, get) => ({
   updateEnrollment: async (id: string, data: Partial<EnrollmentInput>) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/enrollments/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update enrollment');
-      }
+      await api.put(`/api/enrollments/${id}`, data);
       // Refresh the enrollments list
       await get().fetchEnrollments();
     } catch (error) {
@@ -90,12 +67,7 @@ export const useEnrollmentStore = create<EnrollmentStore>((set, get) => ({
   deleteEnrollment: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/enrollments/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete enrollment');
-      }
+      await api.delete(`/api/enrollments/${id}`);
       // Refresh the enrollments list
       await get().fetchEnrollments();
     } catch (error) {

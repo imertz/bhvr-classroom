@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import type { Class, ClassInput } from 'shared/dist';
 import type { ApiState, PaginatedData } from './types';
-
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+import { api } from '../lib/api';
 
 interface ClassStore extends ApiState {
   classes: Class[];
@@ -26,12 +25,8 @@ export const useClassStore = create<ClassStore>((set, get) => ({
   fetchClasses: async () => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/classes`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch classes');
-      }
-      const result = await response.json() as PaginatedData<Class>;
-      set({ classes: result.data, loading: false });
+      const response = await api.get<PaginatedData<Class>>('/api/classes');
+      set({ classes: response.data.data, loading: false });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Unknown error', loading: false });
     }
@@ -40,12 +35,8 @@ export const useClassStore = create<ClassStore>((set, get) => ({
   fetchClass: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/classes/${id}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch class');
-      }
-      const result = await response.json() as { data: Class };
-      set({ currentClass: result.data, loading: false });
+      const response = await api.get<{ data: Class }>(`/api/classes/${id}`);
+      set({ currentClass: response.data.data, loading: false });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Unknown error', loading: false });
     }
@@ -54,14 +45,7 @@ export const useClassStore = create<ClassStore>((set, get) => ({
   createClass: async (data: ClassInput) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/classes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create class');
-      }
+      await api.post('/api/classes', data);
       // Refresh the classes list
       await get().fetchClasses();
     } catch (error) {
@@ -72,14 +56,7 @@ export const useClassStore = create<ClassStore>((set, get) => ({
   updateClass: async (id: string, data: Partial<ClassInput>) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/classes/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update class');
-      }
+      await api.put(`/api/classes/${id}`, data);
       // Refresh the classes list and current class if it's the one being updated
       await get().fetchClasses();
       if (get().currentClass?.id === id) {
@@ -93,12 +70,7 @@ export const useClassStore = create<ClassStore>((set, get) => ({
   deleteClass: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/classes/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete class');
-      }
+      await api.delete(`/api/classes/${id}`);
       // Remove from local state and clear current class if it was deleted
       const { classes, currentClass } = get();
       set({

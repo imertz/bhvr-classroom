@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import type { Student, StudentInput } from 'shared/dist';
 import type { ApiState, PaginatedData } from './types';
-
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+import { api } from '../lib/api';
 
 interface StudentStore extends ApiState {
   students: Student[];
@@ -26,12 +25,8 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
   fetchStudents: async () => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/students`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch students');
-      }
-      const result = await response.json() as PaginatedData<Student>;
-      set({ students: result.data, loading: false });
+      const response = await api.get<PaginatedData<Student>>('/api/students');
+      set({ students: response.data.data, loading: false });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Unknown error', loading: false });
     }
@@ -40,12 +35,8 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
   fetchStudent: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/students/${id}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch student');
-      }
-      const result = await response.json() as { data: Student };
-      set({ currentStudent: result.data, loading: false });
+      const response = await api.get<{ data: Student }>(`/api/students/${id}`);
+      set({ currentStudent: response.data.data, loading: false });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Unknown error', loading: false });
     }
@@ -54,14 +45,7 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
   createStudent: async (data: StudentInput) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/students`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create student');
-      }
+      await api.post('/api/students', data);
       // Refresh the students list
       await get().fetchStudents();
     } catch (error) {
@@ -72,14 +56,7 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
   updateStudent: async (id: string, data: Partial<StudentInput>) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/students/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update student');
-      }
+      await api.put(`/api/students/${id}`, data);
       // Refresh the students list and current student if it's the one being updated
       await get().fetchStudents();
       if (get().currentStudent?.id === id) {
@@ -93,12 +70,7 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
   deleteStudent: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`${SERVER_URL}/students/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete student');
-      }
+      await api.delete(`/api/students/${id}`);
       // Remove from local state and clear current student if it was deleted
       const { students, currentStudent } = get();
       set({
