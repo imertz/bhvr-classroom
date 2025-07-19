@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun run:*)",
+      "Bash(timeout:*)",
+      "Bash(true)",
+      "Bash(ls:*)",
+      "Bash(curl:*)"
+    ],
+    "deny": []
+  }
+}

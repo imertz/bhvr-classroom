@@ -10,6 +10,7 @@ export interface Teacher {
   password_hash: string
   first_name: string
   last_name: string
+  role: 'teacher' | 'admin'
   created_at: string
   updated_at: string
 }
@@ -27,6 +28,17 @@ export const TeacherSchema = z.object({
   password: z.string().min(8),
   first_name: z.string(),
   last_name: z.string(),
+  role: z.enum(['teacher', 'admin']).default('teacher'),
+})
+
+/**
+ * Teacher registration schema
+ */
+export const TeacherRegistrationSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  first_name: z.string().min(1, 'First name is required'),
+  last_name: z.string().min(1, 'Last name is required'),
 })
 
 /**

@@ -49,9 +49,43 @@ export function initializeDatabase() {
       console.log("Database created successfully.");
     } else {
       console.log("Database already exists.");
+      // Run migrations for existing database
+      runMigrations();
     }
   } catch (error) {
     console.error("Failed to initialize database:", error);
+    throw error;
+  }
+}
+
+function runMigrations() {
+  try {
+    console.log("Running database migrations...");
+    
+    // Check if role column exists in teachers table
+    const teachersInfo = db.prepare("PRAGMA table_info(teachers)").all() as any[];
+    const hasRoleColumn = teachersInfo.some((col: any) => col.name === 'role');
+    
+    if (!hasRoleColumn) {
+      console.log("Adding role column to teachers table...");
+      db.exec("ALTER TABLE teachers ADD COLUMN role TEXT DEFAULT 'teacher' CHECK (role IN ('teacher', 'admin'))");
+      db.exec("CREATE INDEX IF NOT EXISTS idx_teachers_role ON teachers(role)");
+      console.log("Role column added successfully.");
+    }
+    
+    // Check if role column exists in students table
+    const studentsInfo = db.prepare("PRAGMA table_info(students)").all() as any[];
+    const hasStudentRoleColumn = studentsInfo.some((col: any) => col.name === 'role');
+    
+    if (!hasStudentRoleColumn) {
+      console.log("Adding role column to students table...");
+      db.exec("ALTER TABLE students ADD COLUMN role TEXT DEFAULT 'student' CHECK (role IN ('student'))");
+      console.log("Role column added to students table.");
+    }
+    
+    console.log("Migrations completed successfully.");
+  } catch (error) {
+    console.error("Failed to run migrations:", error);
     throw error;
   }
 }
@@ -68,11 +102,12 @@ export async function createTeacher(data: TeacherInput): Promise<Teacher> {
   const id = randomUUID();
   if (!data.password) throw new Error("Password is required");
   const hashedPassword = await Bun.password.hash(data.password);
+  const role = (data as any).role || 'teacher'; // Default to teacher if not specified
 
   const query = db.query(
-    "INSERT INTO teachers (id, email, password_hash, first_name, last_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *"
+    "INSERT INTO teachers (id, email, password_hash, first_name, last_name, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *"
   );
-  return query.get(id, data.email, hashedPassword, data.first_name, data.last_name, now, now) as Teacher;
+  return query.get(id, data.email, hashedPassword, data.first_name, data.last_name, role, now, now) as Teacher;
 }
 
 /**
@@ -864,4 +899,55 @@ export async function revokeRefreshToken(id: string): Promise<RefreshToken | nul
   const now = new Date().toISOString();
   const query = db.query("UPDATE refresh_tokens SET revoked_at = ? WHERE id = ? RETURNING *");
   return query.get(now, id) as RefreshToken | null;
+}
+
+/**
+ * Initializes the admin user if it doesn't exist.
+ * Creates a hardcoded admin user with credentials from environment variables.
+ */
+export async function initializeAdminUser(): Promise<void> {
+  try {
+    const { AUTH_CONFIG } = await import('../config/auth');
+    const adminEmail = AUTH_CONFIG.ADMIN_EMAIL;
+    const adminPassword = AUTH_CONFIG.ADMIN_PASSWORD || generateSecurePassword();
+    
+    // Check if admin already exists
+    const existingAdmin = await findTeacherByEmail(adminEmail);
+    if (existingAdmin) {
+      console.log("Admin user already exists");
+      return;
+    }
+
+    // Create admin user
+    const adminUser = await createTeacher({
+      email: adminEmail,
+      password: adminPassword,
+      first_name: "Admin",
+      last_name: "User",
+      role: "admin"
+    } as any);
+
+    console.log("Admin user created successfully:");
+    console.log(`Email: ${adminEmail}`);
+    if (!AUTH_CONFIG.ADMIN_PASSWORD) {
+      console.log(`Password: ${adminPassword}`);
+      console.log("⚠️  Please save this password - it will not be shown again!");
+      console.log("⚠️  Set ADMIN_PASSWORD environment variable for production");
+    }
+  } catch (error) {
+    console.error("Failed to initialize admin user:", error);
+    throw error;
+  }
+}
+
+/**
+ * Generates a secure random password.
+ */
+function generateSecurePassword(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  let password = '';
+  for (let i = 0; i < 12; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
 }

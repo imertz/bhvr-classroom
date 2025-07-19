@@ -8,5 +8,8 @@ export const AUTH_CONFIG = {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict' as const,
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-  }
+  },
+  // Admin user configuration
+  ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'admin@classroom.com',
+  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD, // No default - will be generated if not set
 }

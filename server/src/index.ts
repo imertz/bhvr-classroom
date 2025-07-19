@@ -15,14 +15,15 @@ import { attendanceRoutes } from "./routes/attendance";
 import { announcementRoutes } from "./routes/announcements";
 
 // Import middleware
-import { authMiddleware, requireTeacher } from "./middleware/auth";
+import { authMiddleware, requireTeacher, requireAuth, optionalAuthMiddleware, requireAdmin } from "./middleware/auth";
 import { errorMiddleware } from "./middleware/error";
 
 // Initialize database
-import { initializeDatabase } from "./db/database";
+import { initializeDatabase, initializeAdminUser } from "./db/database";
 
-// Initialize database on startup
+// Initialize database and admin user on startup
 initializeDatabase();
+initializeAdminUser();
 
 export const app = new Hono<{ Variables: AuthVariables }>()
 	.use(cors())
@@ -33,19 +34,49 @@ app.get("/", (c) => c.text("Classroom Management API"));
 app.get("/health", (c) => c.json({ status: "ok" }));
 app.route("/auth", authRoutes);
 
-// Protected routes
-app.use('/api/*', authMiddleware)
+// Teachers routes - admin only for write operations, public read
+app.get('/api/teachers/*', optionalAuthMiddleware)
+app.post('/api/teachers', requireAuth, requireAdmin)
+app.put('/api/teachers/*', requireAuth, requireAdmin)
+app.delete('/api/teachers/*', requireAuth, requireAdmin)
 
-// Apply role-based protection to specific routes
-app.use('/api/teachers/*', requireTeacher)
-app.use('/api/students/*', requireTeacher) // Only teachers can manage students
-app.use('/api/grades/*', requireTeacher)
-app.use('/api/attendance/*', requireTeacher)
+// Students routes - teacher/admin for write operations, public read
+app.get('/api/students/*', optionalAuthMiddleware)
+app.post('/api/students', requireAuth, requireTeacher)
+app.put('/api/students/*', requireAuth, requireTeacher)
+app.delete('/api/students/*', requireAuth, requireTeacher)
 
-// Students can only create/update their own submissions
-app.use('/api/submissions', authMiddleware)
-app.post('/api/submissions', async (c, next) => {
+// Classes routes - teacher/admin for write operations, public read
+app.get('/api/classes/*', optionalAuthMiddleware)
+app.post('/api/classes', requireAuth, requireTeacher)
+app.put('/api/classes/*', requireAuth, requireTeacher)
+app.delete('/api/classes/*', requireAuth, requireTeacher)
+
+// Assignments routes - teacher/admin for write operations, public read
+app.get('/api/assignments/*', optionalAuthMiddleware)
+app.post('/api/assignments', requireAuth, requireTeacher)
+app.put('/api/assignments/*', requireAuth, requireTeacher)
+app.delete('/api/assignments/*', requireAuth, requireTeacher)
+
+// Announcements routes - teacher/admin for write operations, public read
+app.get('/api/announcements/*', optionalAuthMiddleware)
+app.post('/api/announcements', requireAuth, requireTeacher)
+app.put('/api/announcements/*', requireAuth, requireTeacher)
+app.delete('/api/announcements/*', requireAuth, requireTeacher)
+
+// Enrollments routes - authenticated users can read, teacher/admin for write
+app.get('/api/enrollments/*', optionalAuthMiddleware)
+app.post('/api/enrollments', requireAuth, requireTeacher)
+app.put('/api/enrollments/*', requireAuth, requireTeacher)
+app.delete('/api/enrollments/*', requireAuth, requireTeacher)
+
+// Submissions routes - public read, authenticated write with role checks
+app.get('/api/submissions/*', optionalAuthMiddleware)
+app.post('/api/submissions', requireAuth, async (c, next) => {
 	const user = c.get('user')
+	if (!user) {
+		return c.json({ error: 'Authentication required' }, 401)
+	}
 	if (user.role === 'student') {
 		const body = await c.req.json()
 		// Ensure student can only submit for themselves
@@ -55,9 +86,16 @@ app.post('/api/submissions', async (c, next) => {
 	}
 	await next()
 })
+app.put('/api/submissions/*', requireAuth)
+app.delete('/api/submissions/*', requireAuth)
 
+// Grades routes - teacher/admin only (sensitive data)
+app.use('/api/grades/*', requireAuth, requireTeacher)
 
-// Protected routes (add auth middleware to each)
+// Attendance routes - teacher/admin only (sensitive data)
+app.use('/api/attendance/*', requireAuth, requireTeacher)
+
+// Mount the route handlers
 app.route("/api/teachers", teacherRoutes);
 app.route("/api/students", studentRoutes);
 app.route("/api/classes", classRoutes);

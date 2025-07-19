@@ -129,9 +129,12 @@ CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
 CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id, user_type);
 CREATE INDEX idx_refresh_tokens_expires ON refresh_tokens(expires_at);
 
--- Add role columns
-ALTER TABLE teachers ADD COLUMN role TEXT DEFAULT 'teacher';
-ALTER TABLE students ADD COLUMN role TEXT DEFAULT 'student';
+-- Create indexes for role-based queries
+CREATE INDEX IF NOT EXISTS idx_teachers_role ON teachers(role);
+
+-- Add role columns with constraints
+ALTER TABLE teachers ADD COLUMN role TEXT DEFAULT 'teacher' CHECK (role IN ('teacher', 'admin'));
+ALTER TABLE students ADD COLUMN role TEXT DEFAULT 'student' CHECK (role IN ('student'));
 
 -- Create refresh_tokens table
 CREATE TABLE IF NOT EXISTS refresh_tokens (

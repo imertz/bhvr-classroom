@@ -3,7 +3,7 @@ import type { JWTPayload } from 'hono/utils/jwt/types'
 export interface AuthUser {
   id: string
   email: string
-  role: 'teacher' | 'student'
+  role: 'teacher' | 'student' | 'admin'
   userType: 'teacher' | 'student'
 }
 
@@ -20,6 +20,11 @@ export interface RefreshTokenPayload extends JWTPayload {
 }
 
 export interface AuthVariables {
+  user?: AuthUser
+  jwtPayload?: AccessTokenPayload
+}
+
+export interface RequiredAuthVariables {
   user: AuthUser
   jwtPayload: AccessTokenPayload
 }

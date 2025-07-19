@@ -2,7 +2,8 @@ import { Hono } from 'hono'
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import { z } from 'zod'
 import type { AuthVariables, AuthUser, RefreshTokenPayload } from '../types/auth'
-import { findTeacherByEmail, findStudentByEmail, storeRefreshToken, findRefreshTokenById, revokeRefreshToken, findTeacherById, findStudentById } from '../db/database'
+import { findTeacherByEmail, findStudentByEmail, storeRefreshToken, findRefreshTokenById, revokeRefreshToken, findTeacherById, findStudentById, createTeacher } from '../db/database'
+import { TeacherRegistrationSchema } from 'shared/src/types/teacher'
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt'
 import { AUTH_CONFIG } from '../config/auth'
 import { randomUUID } from 'crypto'
@@ -37,7 +38,7 @@ authRoutes.post('/teacher/login', async (c) => {
   const user: AuthUser = {
     id: teacher.id,
     email: teacher.email,
-    role: 'teacher',
+    role: teacher.role || 'teacher',
     userType: 'teacher'
   }
 
@@ -64,7 +65,7 @@ authRoutes.post('/teacher/login', async (c) => {
       email: teacher.email,
       firstName: teacher.first_name,
       lastName: teacher.last_name,
-      role: 'teacher'
+      role: teacher.role || 'teacher'
     },
     accessToken
   })
@@ -105,7 +106,7 @@ authRoutes.post('/refresh', async (c) => {
       user = {
         id: teacher.id,
         email: teacher.email,
-        role: 'teacher',
+        role: teacher.role || 'teacher',
         userType: 'teacher'
       }
     } else {
@@ -141,7 +142,7 @@ authRoutes.get('/me', authMiddleware, async (c) => {
         email: teacher.email,
         firstName: teacher.first_name,
         lastName: teacher.last_name,
-        role: 'teacher'
+        role: teacher.role || 'teacher'
       }
     })
   } else {
@@ -157,6 +158,68 @@ authRoutes.get('/me', authMiddleware, async (c) => {
         gradeLevel: student.grade_level
       }
     })
+  }
+})
+
+// Teacher registration
+authRoutes.post('/teacher/register', async (c) => {
+  try {
+    const body = await c.req.json()
+    const registrationData = TeacherRegistrationSchema.parse(body)
+
+    // Check if teacher already exists
+    const existingTeacher = await findTeacherByEmail(registrationData.email)
+    if (existingTeacher) {
+      return c.json({ error: 'Email already exists' }, 409)
+    }
+
+    // Create teacher
+    const teacher = await createTeacher({
+      ...registrationData,
+      role: 'teacher'
+    } as any)
+
+    // Generate tokens for auto-login
+    const user: AuthUser = {
+      id: teacher.id,
+      email: teacher.email,
+      role: 'teacher',
+      userType: 'teacher'
+    }
+
+    const accessToken = await generateAccessToken(user)
+    const refreshTokenId = randomUUID()
+    const refreshToken = await generateRefreshToken(teacher.id, 'teacher', refreshTokenId)
+
+    // Store refresh token (hashed)
+    const hashedRefreshToken = await Bun.password.hash(refreshToken)
+    await storeRefreshToken({
+      id: refreshTokenId,
+      user_id: teacher.id,
+      user_type: 'teacher',
+      token_hash: hashedRefreshToken,
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    })
+
+    // Set refresh token as httpOnly cookie
+    setCookie(c, 'refresh_token', refreshToken, AUTH_CONFIG.COOKIE_OPTIONS)
+
+    return c.json({
+      user: {
+        id: teacher.id,
+        email: teacher.email,
+        firstName: teacher.first_name,
+        lastName: teacher.last_name,
+        role: 'teacher'
+      },
+      accessToken
+    }, 201)
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return c.json({ error: 'Validation failed', details: error.errors }, 400)
+    }
+    console.error('Registration error:', error)
+    return c.json({ error: 'Registration failed' }, 500)
   }
 })
 
