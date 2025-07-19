@@ -1,6 +1,7 @@
 # Classroom Management System 🏫
 
-![bhvr-classroom](https://cdn.stevedylan.dev/ipfs/bafybeievx27ar5qfqyqyud7kemnb5n2p4rzt2matogi6qttwkpxonqhra4)
+<img width="2534" height="2300" alt="image" src="https://github.com/user-attachments/assets/a29de6b0-d4a8-4380-a921-8a07c1778ff8" />
+
 
 A comprehensive full-stack classroom management system built with modern TypeScript technologies, featuring complete CRUD operations for all educational entities.
 
@@ -51,13 +52,12 @@ This classroom management system provides a complete solution for educational in
 
 ### Prerequisites
 - [Bun](https://bun.sh) installed on your system
-- Node.js (for the client development)
 
 ### Installation
 
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/imertz/bhvr-classroom.git
    cd bhvr-classroom
    ```
 
@@ -75,7 +75,7 @@ This classroom management system provides a complete solution for educational in
    cd server && bun run dev
    
    # Terminal 2 - Client
-   cd client && npm run dev
+   cd client && bun run dev
    ```
 
 4. Open your browser:
