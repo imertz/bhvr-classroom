@@ -9,6 +9,7 @@
     // Output configuration
     "declaration": true,
     "outDir": "./dist",
+    "rootDir": "./src",
     "noEmit": false,
 
     // Type checking

@@ -26,7 +26,7 @@ interface AuthState {
 }
 
 // Timer for automatic token refresh
-let refreshTimer: NodeJS.Timeout | null = null;
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 export const useAuthStore = create<AuthState>()(
   persist(

@@ -62,6 +62,10 @@ This classroom management system provides a complete solution for educational in
 - Node.js (for the client development)
 - Basic knowledge of TypeScript and React
 
+### TypeScript 7 compatibility
+
+The repository uses TypeScript 7 for builds through the `@typescript/native` alias. `typescript-eslint` still requires the TypeScript 6 compiler API, so the `typescript` dependency intentionally points to `@typescript/typescript6`; this keeps TypeScript 7's `tsc` and ESLint's compatible API installed side by side.
+
 ## 🚀 Quick Start
 
 1. **Clone the repository:**

@@ -14,6 +14,7 @@
     // Output settings
     "declaration": true,
     "outDir": "dist",
+    "rootDir": "./src",
     "noEmit": false,
     "emitDecoratorMetadata": true,
 

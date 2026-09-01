@@ -9,11 +9,11 @@
     "test": "bun test"
   },
   "dependencies": {
-    "hono": "^4.7.11",
+    "hono": "^4.13.5",
     "shared": "workspace:*",
-    "zod": "^3.22.4"
+    "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "^1.4.0"
   }
 }

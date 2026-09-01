@@ -80,7 +80,7 @@ authRoutes.post('/refresh', async (c) => {
 
   try {
     // Verify refresh token
-    const payload = await verify(refreshToken, AUTH_CONFIG.REFRESH_TOKEN_SECRET) as RefreshTokenPayload
+    const payload = await verify(refreshToken, AUTH_CONFIG.REFRESH_TOKEN_SECRET, 'HS256') as RefreshTokenPayload
 
     if (payload.type !== 'refresh') {
       throw new Error('Invalid token type')
@@ -216,7 +216,7 @@ authRoutes.post('/teacher/register', async (c) => {
     }, 201)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json({ error: 'Validation failed', details: error.errors }, 400)
+      return c.json({ error: 'Validation failed', details: error.issues }, 400)
     }
     console.error('Registration error:', error)
     return c.json({ error: 'Registration failed' }, 500)
@@ -230,7 +230,7 @@ authRoutes.post('/logout', authMiddleware, async (c) => {
   if (refreshToken) {
     // Revoke refresh token in database
     try {
-      const payload = await verify(refreshToken, AUTH_CONFIG.REFRESH_TOKEN_SECRET) as RefreshTokenPayload
+      const payload = await verify(refreshToken, AUTH_CONFIG.REFRESH_TOKEN_SECRET, 'HS256') as RefreshTokenPayload
       await revokeRefreshToken(payload.tokenId)
     } catch (error) {
       // Token might be invalid, but we still want to clear the cookie
