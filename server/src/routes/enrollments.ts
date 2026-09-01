@@ -12,26 +12,50 @@
 
 import { Hono } from 'hono'
 import { EnrollmentSchema, type Enrollment, type EnrollmentInput } from 'shared/src/types/enrollment'
+import type { AuthVariables } from '../types/auth'
 import {
   createEnrollment,
   findEnrollmentById,
   findAllEnrollments,
+  findEnrollmentsByStudentId,
   updateEnrollment,
   deleteEnrollment
 } from '../db/database'
 
-export const enrollmentRoutes = new Hono()
+export const enrollmentRoutes = new Hono<{ Variables: AuthVariables }>()
 
 /**
- * List all enrollments
+ * List enrollments (student-scoped if student, all otherwise)
  */
 enrollmentRoutes.get('/', async (c) => {
+  const user = c.get('user')
+
   try {
+    if (user?.role === 'student') {
+      const enrollments = await findEnrollmentsByStudentId(user.id)
+      return c.json({ data: enrollments, count: enrollments.length })
+    }
+
     const enrollments = await findAllEnrollments()
     return c.json({ data: enrollments, count: enrollments.length })
   } catch (error) {
     console.error('Error listing enrollments:', error)
     return c.json({ error: 'Failed to list enrollments' }, 500)
+  }
+})
+
+/**
+ * Get enrollments for a specific student
+ */
+enrollmentRoutes.get('/student/:studentId', async (c) => {
+  const studentId = c.req.param('studentId')
+
+  try {
+    const enrollments = await findEnrollmentsByStudentId(studentId)
+    return c.json({ data: enrollments, count: enrollments.length })
+  } catch (error) {
+    console.error('Error getting student enrollments:', error)
+    return c.json({ error: 'Failed to get student enrollments' }, 500)
   }
 })
 

@@ -92,11 +92,17 @@ app.post('/api/submissions', requireAuth, async (c, next) => {
 app.put('/api/submissions/*', requireAuth)
 app.delete('/api/submissions/*', requireAuth)
 
-// Grades routes - teacher/admin only (sensitive data)
-app.use('/api/grades/*', requireAuth, requireTeacher)
+// Grades routes - authenticated read, teacher/admin write
+app.get('/api/grades/*', requireAuth)
+app.post('/api/grades', requireAuth, requireTeacher)
+app.put('/api/grades/*', requireAuth, requireTeacher)
+app.delete('/api/grades/*', requireAuth, requireTeacher)
 
-// Attendance routes - teacher/admin only (sensitive data)
-app.use('/api/attendance/*', requireAuth, requireTeacher)
+// Attendance routes - authenticated read, teacher/admin write
+app.get('/api/attendance/*', requireAuth)
+app.post('/api/attendance', requireAuth, requireTeacher)
+app.put('/api/attendance/*', requireAuth, requireTeacher)
+app.delete('/api/attendance/*', requireAuth, requireTeacher)
 
 // Mount the route handlers
 app.route("/api/teachers", teacherRoutes);

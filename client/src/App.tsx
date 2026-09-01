@@ -39,12 +39,12 @@ function App() {
             <Route path="submissions" element={<SubmissionsPage />} />
             <Route path="enrollments" element={<EnrollmentsPage />} />
             <Route path="attendance" element={
-              <ProtectedRoute allowedRoles={['admin', 'teacher']}>
+              <ProtectedRoute allowedRoles={['admin', 'teacher', 'student']}>
                 <AttendancePage />
               </ProtectedRoute>
             } />
             <Route path="grades" element={
-              <ProtectedRoute allowedRoles={['admin', 'teacher']}>
+              <ProtectedRoute allowedRoles={['admin', 'teacher', 'student']}>
                 <GradesPage />
               </ProtectedRoute>
             } />

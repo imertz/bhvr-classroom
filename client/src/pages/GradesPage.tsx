@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useGradeStore, useSubmissionStore, useAssignmentStore, useStudentStore, useTeacherStore } from '../stores';
 import { Button } from '../components/ui/button';
+import { usePermissions } from '../hooks/usePermissions';
+import { formatDateTime } from '../lib/utils';
 import type { Grade, GradeInput } from 'shared/dist';
 
 export default function GradesPage() {
@@ -19,6 +21,9 @@ export default function GradesPage() {
   const { assignments, fetchAssignments } = useAssignmentStore();
   const { students, fetchStudents } = useStudentStore();
   const { teachers, fetchTeachers } = useTeacherStore();
+  const { isAdmin, isTeacher, isStudent } = usePermissions();
+
+  const canManageGrades = isAdmin || isTeacher;
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -77,10 +82,6 @@ export default function GradesPage() {
     }
   };
 
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
-  };
-
   const getSubmissionInfo = (submissionId: string) => {
     const submission = submissions.find(s => s.id === submissionId);
     if (!submission) return 'Unknown Submission';
@@ -112,6 +113,13 @@ export default function GradesPage() {
     return Math.round((earned / possible) * 100);
   };
 
+  const averagePercentage = grades.length > 0 ? Math.round(
+    grades.reduce((sum, grade) => {
+      const max = getAssignmentPoints(grade.submission_id);
+      return sum + calculatePercentage(grade.points_earned, max);
+    }, 0) / grades.length
+  ) : 0;
+
   if (loading) {
     return <div className="max-w-6xl mx-auto p-6">Loading grades...</div>;
   }
@@ -119,11 +127,47 @@ export default function GradesPage() {
   return (
     <div className="max-w-6xl mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Grades</h1>
-        <Button onClick={() => setShowForm(true)}>
-          Add Grade
-        </Button>
+        <div>
+          <h1 className="text-3xl font-bold">{isStudent ? 'My Grades' : 'Grades'}</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            {isStudent ? 'Your academic progress and scores' : 'Track and record student assignment evaluations'}
+          </p>
+        </div>
+        {canManageGrades && (
+          <Button onClick={() => setShowForm(true)}>
+            Add Grade
+          </Button>
+        )}
       </div>
+
+      {/* Summary Cards */}
+      {grades.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <span className="text-xs font-semibold text-gray-500 uppercase">Graded Items</span>
+            <div className="text-2xl font-bold text-gray-900 mt-1">{grades.length}</div>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <span className="text-xs font-semibold text-gray-500 uppercase">Average Score</span>
+            <div className={`text-2xl font-bold mt-1 ${
+              averagePercentage >= 80 ? 'text-green-600' :
+              averagePercentage >= 70 ? 'text-yellow-600' :
+              'text-red-600'
+            }`}>
+              {averagePercentage}%
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <span className="text-xs font-semibold text-gray-500 uppercase">Average Standing</span>
+            <div className="text-2xl font-bold text-indigo-600 mt-1">
+              {averagePercentage >= 90 ? 'A (Excellent)' :
+               averagePercentage >= 80 ? 'B (Good)' :
+               averagePercentage >= 70 ? 'C (Satisfactory)' :
+               averagePercentage >= 60 ? 'D (Needs Work)' : 'F'}
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
@@ -251,9 +295,11 @@ export default function GradesPage() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Graded At
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
+              {canManageGrades && (
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -298,20 +344,22 @@ export default function GradesPage() {
                       {formatDateTime(grade.graded_at)}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => handleEdit(grade)}
-                      className="text-indigo-600 hover:text-indigo-900 mr-4"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(grade.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
-                  </td>
+                  {canManageGrades && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => handleEdit(grade)}
+                        className="text-indigo-600 hover:text-indigo-900 mr-4"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(grade.id)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -319,7 +367,7 @@ export default function GradesPage() {
         </table>
         {grades.length === 0 && (
           <div className="text-center py-8 text-gray-500">
-            No grades found. Add your first grade!
+            {isStudent ? 'No grades recorded yet.' : 'No grades found. Add your first grade!'}
           </div>
         )}
       </div>

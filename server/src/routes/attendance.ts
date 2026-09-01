@@ -12,26 +12,55 @@
 
 import { Hono } from 'hono'
 import { AttendanceSchema, type Attendance, type AttendanceInput } from 'shared/src/types/attendance'
+import type { AuthVariables } from '../types/auth'
 import {
   createAttendance,
   findAttendanceById,
   findAllAttendances,
+  findAttendancesByStudentId,
   updateAttendance,
   deleteAttendance
 } from '../db/database'
 
-export const attendanceRoutes = new Hono()
+export const attendanceRoutes = new Hono<{ Variables: AuthVariables }>()
 
 /**
- * List all attendance records
+ * List attendance records (student-scoped if student, all if teacher/admin)
  */
 attendanceRoutes.get('/', async (c) => {
+  const user = c.get('user')
+
   try {
+    if (user?.role === 'student') {
+      const attendances = await findAttendancesByStudentId(user.id)
+      return c.json({ data: attendances, count: attendances.length })
+    }
+
     const attendances = await findAllAttendances()
     return c.json({ data: attendances, count: attendances.length })
   } catch (error) {
     console.error('Error listing attendance records:', error)
     return c.json({ error: 'Failed to list attendance records' }, 500)
+  }
+})
+
+/**
+ * Get attendance records for a specific student
+ */
+attendanceRoutes.get('/student/:studentId', async (c) => {
+  const user = c.get('user')
+  const studentId = c.req.param('studentId')
+
+  if (user?.role === 'student' && user.id !== studentId) {
+    return c.json({ error: 'Forbidden' }, 403)
+  }
+
+  try {
+    const attendances = await findAttendancesByStudentId(studentId)
+    return c.json({ data: attendances, count: attendances.length })
+  } catch (error) {
+    console.error('Error getting student attendance:', error)
+    return c.json({ error: 'Failed to get student attendance' }, 500)
   }
 })
 

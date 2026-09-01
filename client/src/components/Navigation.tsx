@@ -7,20 +7,22 @@ export default function Navigation() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, isLoading } = useAuthStore();
-  const { isAuthenticated } = usePermissions();
+  const { isAuthenticated, isAdmin, isTeacher, isStudent } = usePermissions();
 
-  const navItems = [
-    { path: '/', label: 'Home' },
-    { path: '/teachers', label: 'Teachers' },
-    { path: '/students', label: 'Students' },
-    { path: '/classes', label: 'Classes' },
-    { path: '/assignments', label: 'Assignments' },
-    { path: '/announcements', label: 'Announcements' },
-    { path: '/submissions', label: 'Submissions' },
-    { path: '/enrollments', label: 'Enrollments' },
-    { path: '/attendance', label: 'Attendance' },
-    { path: '/grades', label: 'Grades' },
+  const allNavItems = [
+    { path: '/', label: 'Home', show: true },
+    { path: '/teachers', label: 'Teachers', show: isAdmin },
+    { path: '/students', label: 'Students', show: isAdmin || isTeacher },
+    { path: '/classes', label: isStudent ? 'My Classes' : 'Classes', show: true },
+    { path: '/assignments', label: isStudent ? 'My Assignments' : 'Assignments', show: true },
+    { path: '/announcements', label: 'Announcements', show: true },
+    { path: '/submissions', label: isStudent ? 'My Submissions' : 'Submissions', show: true },
+    { path: '/enrollments', label: 'Enrollments', show: isAdmin || isTeacher },
+    { path: '/attendance', label: isStudent ? 'My Attendance' : 'Attendance', show: true },
+    { path: '/grades', label: isStudent ? 'My Grades' : 'Grades', show: true },
   ];
+
+  const navItems = allNavItems.filter(item => item.show);
 
   const handleLogout = async () => {
     try {

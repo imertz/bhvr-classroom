@@ -255,13 +255,6 @@ describe("API Routes & Role-Based Access Control", () => {
       expect(res.status).toBe(401);
     });
 
-    it("should forbid student from accessing teacher grades route (403)", async () => {
-      const res = await app.request("/api/grades", {
-        headers: { Authorization: `Bearer ${studentToken}` }
-      });
-      expect(res.status).toBe(403);
-    });
-
     it("should allow teacher to grade a submission", async () => {
       const res = await app.request("/api/grades", {
         method: "POST",
@@ -280,6 +273,32 @@ describe("API Routes & Role-Based Access Control", () => {
       expect(res.status).toBe(201);
       const body = await res.json() as any;
       expect(body.data.points_earned).toBe(95);
+    });
+
+    it("should allow student to read their own grades", async () => {
+      const res = await app.request("/api/grades", {
+        headers: { Authorization: `Bearer ${studentToken}` }
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json() as any;
+      expect(Array.isArray(body.data)).toBe(true);
+      expect(body.data.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("should forbid student from creating a grade (403)", async () => {
+      const res = await app.request("/api/grades", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${studentToken}`
+        },
+        body: JSON.stringify({
+          submission_id: testSubmissionId,
+          points_earned: 100,
+          graded_by: testStudentId
+        })
+      });
+      expect(res.status).toBe(403);
     });
 
     it("should forbid student from recording attendance (403)", async () => {
@@ -319,6 +338,26 @@ describe("API Routes & Role-Based Access Control", () => {
       expect(res.status).toBe(201);
       const body = await res.json() as any;
       expect(body.data.status).toBe("present");
+    });
+
+    it("should allow student to read their own attendance records", async () => {
+      const res = await app.request("/api/attendance", {
+        headers: { Authorization: `Bearer ${studentToken}` }
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json() as any;
+      expect(Array.isArray(body.data)).toBe(true);
+      expect(body.data.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("should allow student to retrieve their enrolled classes", async () => {
+      const res = await app.request("/api/classes", {
+        headers: { Authorization: `Bearer ${studentToken}` }
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json() as any;
+      expect(Array.isArray(body.data)).toBe(true);
+      expect(body.data.some((c: any) => c.id === testClassId)).toBe(true);
     });
   });
 });

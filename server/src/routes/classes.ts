@@ -12,26 +12,50 @@
 
 import { Hono } from 'hono'
 import { ClassSchema, type Class, type ClassInput } from 'shared/src/types/class'
+import type { AuthVariables } from '../types/auth'
 import {
   createClass,
   findClassById,
   findAllClasses,
+  findClassesByStudentId,
   updateClass,
   deleteClass
 } from '../db/database'
 
-export const classRoutes = new Hono()
+export const classRoutes = new Hono<{ Variables: AuthVariables }>()
 
 /**
- * List all classes
+ * List classes (student-scoped if student, all otherwise)
  */
 classRoutes.get('/', async (c) => {
+  const user = c.get('user')
+
   try {
+    if (user?.role === 'student') {
+      const classes = await findClassesByStudentId(user.id)
+      return c.json({ data: classes, count: classes.length })
+    }
+
     const classes = await findAllClasses()
     return c.json({ data: classes, count: classes.length })
   } catch (error) {
     console.error('Error listing classes:', error)
     return c.json({ error: 'Failed to list classes' }, 500)
+  }
+})
+
+/**
+ * Get classes for a specific student
+ */
+classRoutes.get('/student/:studentId', async (c) => {
+  const studentId = c.req.param('studentId')
+
+  try {
+    const classes = await findClassesByStudentId(studentId)
+    return c.json({ data: classes, count: classes.length })
+  } catch (error) {
+    console.error('Error getting student classes:', error)
+    return c.json({ error: 'Failed to get student classes' }, 500)
   }
 })
 

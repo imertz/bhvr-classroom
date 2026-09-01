@@ -8,6 +8,7 @@ export interface Permissions {
   canManageTeachers: boolean;
   isAdmin: boolean;
   isTeacher: boolean;
+  isStudent: boolean;
   isAuthenticated: boolean;
   userRole: string | null;
 }
@@ -18,6 +19,7 @@ export const usePermissions = (): Permissions => {
   const userRole = user?.role || null;
   const isAdmin = isAuthenticated && userRole === 'admin';
   const isTeacher = isAuthenticated && userRole === 'teacher';
+  const isStudent = isAuthenticated && userRole === 'student';
   
   return {
     canCreate: isAdmin || isTeacher,
@@ -27,6 +29,7 @@ export const usePermissions = (): Permissions => {
     canManageTeachers: isAdmin,
     isAdmin,
     isTeacher,
+    isStudent,
     isAuthenticated,
     userRole,
   };

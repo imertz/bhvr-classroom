@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAttendanceStore, useStudentStore, useClassStore } from '../stores';
 import { Button } from '../components/ui/button';
+import { usePermissions } from '../hooks/usePermissions';
 import { formatDate } from '../lib/utils';
 import type { Attendance, AttendanceInput } from 'shared/dist';
 
@@ -18,6 +19,9 @@ export default function AttendancePage() {
 
   const { students, fetchStudents } = useStudentStore();
   const { classes, fetchClasses } = useClassStore();
+  const { isAdmin, isTeacher, isStudent } = usePermissions();
+
+  const canManageAttendance = isAdmin || isTeacher;
 
   const getTodayString = () => {
     const d = new Date();
@@ -92,8 +96,8 @@ export default function AttendancePage() {
   };
 
   const getClassName = (classId: string) => {
-    const classInfo = classes.find(c => c.id === classId);
-    return classInfo ? `${classInfo.name} (${classInfo.subject})` : 'Unknown Class';
+    const class_ = classes.find(c => c.id === classId);
+    return class_ ? class_.name : 'Unknown Class';
   };
 
   const getStatusColor = (status: string) => {
@@ -106,6 +110,12 @@ export default function AttendancePage() {
     }
   };
 
+  const totalDays = attendances.length;
+  const presentCount = attendances.filter(a => a.status === 'present').length;
+  const absentCount = attendances.filter(a => a.status === 'absent').length;
+  const tardyCount = attendances.filter(a => a.status === 'tardy' || a.status === 'excused').length;
+  const attendanceRate = totalDays > 0 ? Math.round((presentCount / totalDays) * 100) : 100;
+
   if (loading) {
     return <div className="max-w-6xl mx-auto p-6">Loading attendance...</div>;
   }
@@ -113,11 +123,46 @@ export default function AttendancePage() {
   return (
     <div className="max-w-6xl mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Attendance</h1>
-        <Button onClick={() => setShowForm(true)}>
-          Record Attendance
-        </Button>
+        <div>
+          <h1 className="text-3xl font-bold">{isStudent ? 'My Attendance' : 'Attendance'}</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            {isStudent ? 'Your recorded classroom attendance history' : 'Track and manage student daily presence'}
+          </p>
+        </div>
+        {canManageAttendance && (
+          <Button onClick={() => setShowForm(true)}>
+            Record Attendance
+          </Button>
+        )}
       </div>
+
+      {/* Summary KPI Cards */}
+      {attendances.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <span className="text-xs font-semibold text-gray-500 uppercase">Attendance Rate</span>
+            <div className={`text-2xl font-bold mt-1 ${
+              attendanceRate >= 90 ? 'text-green-600' :
+              attendanceRate >= 75 ? 'text-yellow-600' :
+              'text-red-600'
+            }`}>
+              {attendanceRate}%
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <span className="text-xs font-semibold text-gray-500 uppercase">Present</span>
+            <div className="text-2xl font-bold text-green-600 mt-1">{presentCount}</div>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <span className="text-xs font-semibold text-gray-500 uppercase">Absent</span>
+            <div className="text-2xl font-bold text-red-600 mt-1">{absentCount}</div>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <span className="text-xs font-semibold text-gray-500 uppercase">Tardy / Excused</span>
+            <div className="text-2xl font-bold text-yellow-600 mt-1">{tardyCount}</div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
@@ -252,9 +297,11 @@ export default function AttendancePage() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Notes
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
+              {canManageAttendance && (
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -285,27 +332,29 @@ export default function AttendancePage() {
                     {attendance.notes || '-'}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button
-                    onClick={() => handleEdit(attendance)}
-                    className="text-indigo-600 hover:text-indigo-900 mr-4"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(attendance.id)}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    Delete
-                  </button>
-                </td>
+                {canManageAttendance && (
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button
+                      onClick={() => handleEdit(attendance)}
+                      className="text-indigo-600 hover:text-indigo-900 mr-4"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(attendance.id)}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
         </table>
         {attendances.length === 0 && (
           <div className="text-center py-8 text-gray-500">
-            No attendance records found. Record your first attendance!
+            {isStudent ? 'No attendance records recorded yet.' : 'No attendance records found. Record your first attendance!'}
           </div>
         )}
       </div>

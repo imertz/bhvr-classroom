@@ -12,26 +12,55 @@
 
 import { Hono } from 'hono'
 import { GradeSchema, type Grade, type GradeInput } from 'shared/src/types/grade'
+import type { AuthVariables } from '../types/auth'
 import {
   createGrade,
   findGradeById,
   findAllGrades,
+  findGradesByStudentId,
   updateGrade,
   deleteGrade
 } from '../db/database'
 
-export const gradeRoutes = new Hono()
+export const gradeRoutes = new Hono<{ Variables: AuthVariables }>()
 
 /**
- * List all grades
+ * List grades (student-scoped if student, all if teacher/admin)
  */
 gradeRoutes.get('/', async (c) => {
+  const user = c.get('user')
+
   try {
+    if (user?.role === 'student') {
+      const grades = await findGradesByStudentId(user.id)
+      return c.json({ data: grades, count: grades.length })
+    }
+
     const grades = await findAllGrades()
     return c.json({ data: grades, count: grades.length })
   } catch (error) {
     console.error('Error listing grades:', error)
     return c.json({ error: 'Failed to list grades' }, 500)
+  }
+})
+
+/**
+ * Get grades for a specific student
+ */
+gradeRoutes.get('/student/:studentId', async (c) => {
+  const user = c.get('user')
+  const studentId = c.req.param('studentId')
+
+  if (user?.role === 'student' && user.id !== studentId) {
+    return c.json({ error: 'Forbidden' }, 403)
+  }
+
+  try {
+    const grades = await findGradesByStudentId(studentId)
+    return c.json({ data: grades, count: grades.length })
+  } catch (error) {
+    console.error('Error getting student grades:', error)
+    return c.json({ error: 'Failed to get student grades' }, 500)
   }
 })
 

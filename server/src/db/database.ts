@@ -333,6 +333,19 @@ export async function findAllClasses(): Promise<Class[]> {
 }
 
 /**
+ * Finds all classes a student is enrolled in.
+ */
+export async function findClassesByStudentId(studentId: string): Promise<Class[]> {
+  const query = db.query(`
+    SELECT c.* FROM classes c
+    INNER JOIN enrollments e ON c.id = e.class_id
+    WHERE e.student_id = ? AND e.status = 'active'
+    ORDER BY c.name ASC
+  `);
+  return query.all(studentId) as Class[];
+}
+
+/**
  * Updates a class's information.
  * @param id - The ID of the class to update.
  * @param data - The data to update.
@@ -401,6 +414,14 @@ export async function findEnrollmentById(id: string): Promise<Enrollment | null>
 export async function findAllEnrollments(): Promise<Enrollment[]> {
   const query = db.query("SELECT * FROM enrollments");
   return query.all() as Enrollment[];
+}
+
+/**
+ * Finds all enrollments for a specific student.
+ */
+export async function findEnrollmentsByStudentId(studentId: string): Promise<Enrollment[]> {
+  const query = db.query("SELECT * FROM enrollments WHERE student_id = ?");
+  return query.all(studentId) as Enrollment[];
 }
 
 /**
@@ -582,6 +603,14 @@ export async function findAllSubmissions(): Promise<Submission[]> {
 }
 
 /**
+ * Finds all submissions for a specific student.
+ */
+export async function findSubmissionsByStudentId(studentId: string): Promise<Submission[]> {
+  const query = db.query("SELECT * FROM submissions WHERE student_id = ? ORDER BY submitted_at DESC");
+  return query.all(studentId) as Submission[];
+}
+
+/**
  * Updates a submission's information.
  * @param id - The ID of the submission to update.
  * @param data - The data to update.
@@ -664,6 +693,19 @@ export async function findAllGrades(): Promise<Grade[]> {
 }
 
 /**
+ * Finds all grades for a specific student.
+ */
+export async function findGradesByStudentId(studentId: string): Promise<Grade[]> {
+  const query = db.query(`
+    SELECT g.* FROM grades g
+    INNER JOIN submissions s ON g.submission_id = s.id
+    WHERE s.student_id = ?
+    ORDER BY g.graded_at DESC
+  `);
+  return query.all(studentId) as Grade[];
+}
+
+/**
  * Updates a grade's information.
  * @param id - The ID of the grade to update.
  * @param data - The data to update.
@@ -740,6 +782,14 @@ export async function findAttendanceById(id: string): Promise<Attendance | null>
 export async function findAllAttendances(): Promise<Attendance[]> {
   const query = db.query("SELECT * FROM attendance");
   return query.all() as Attendance[];
+}
+
+/**
+ * Finds all attendance records for a specific student.
+ */
+export async function findAttendancesByStudentId(studentId: string): Promise<Attendance[]> {
+  const query = db.query("SELECT * FROM attendance WHERE student_id = ? ORDER BY date DESC");
+  return query.all(studentId) as Attendance[];
 }
 
 /**
