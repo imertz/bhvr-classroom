@@ -17,27 +17,101 @@ const LoginSchema = z.object({
 
 export const authRoutes = new Hono<{ Variables: AuthVariables }>()
 
+// Unified login (auto-detects teacher vs student)
+authRoutes.post('/login', async (c) => {
+  const body = await c.req.json()
+  const { email, password } = LoginSchema.parse(body)
+
+  // Try teacher/admin first
+  const teacher = await findTeacherByEmail(email)
+  if (teacher && teacher.password_hash) {
+    const isValid = await Bun.password.verify(password, teacher.password_hash)
+    if (isValid) {
+      const user: AuthUser = {
+        id: teacher.id,
+        email: teacher.email,
+        firstName: teacher.first_name,
+        lastName: teacher.last_name,
+        role: teacher.role || 'teacher',
+        userType: 'teacher'
+      }
+
+      const accessToken = await generateAccessToken(user)
+      const refreshTokenId = randomUUID()
+      const refreshToken = await generateRefreshToken(teacher.id, 'teacher', refreshTokenId)
+
+      const hashedRefreshToken = await Bun.password.hash(refreshToken)
+      await storeRefreshToken({
+        id: refreshTokenId,
+        user_id: teacher.id,
+        user_type: 'teacher',
+        token_hash: hashedRefreshToken,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      })
+
+      setCookie(c, 'refresh_token', refreshToken, AUTH_CONFIG.COOKIE_OPTIONS)
+
+      return c.json({ user, accessToken })
+    }
+  }
+
+  // Try student
+  const student = await findStudentByEmail(email)
+  if (student && student.password_hash) {
+    const isValid = await Bun.password.verify(password, student.password_hash)
+    if (isValid) {
+      const user: AuthUser = {
+        id: student.id,
+        email: student.email,
+        firstName: student.first_name,
+        lastName: student.last_name,
+        role: 'student',
+        userType: 'student',
+        gradeLevel: student.grade_level
+      }
+
+      const accessToken = await generateAccessToken(user)
+      const refreshTokenId = randomUUID()
+      const refreshToken = await generateRefreshToken(student.id, 'student', refreshTokenId)
+
+      const hashedRefreshToken = await Bun.password.hash(refreshToken)
+      await storeRefreshToken({
+        id: refreshTokenId,
+        user_id: student.id,
+        user_type: 'student',
+        token_hash: hashedRefreshToken,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      })
+
+      setCookie(c, 'refresh_token', refreshToken, AUTH_CONFIG.COOKIE_OPTIONS)
+
+      return c.json({ user, accessToken })
+    }
+  }
+
+  return c.json({ error: 'Invalid credentials' }, 401)
+})
+
 // Teacher login
 authRoutes.post('/teacher/login', async (c) => {
   const body = await c.req.json()
   const { email, password } = LoginSchema.parse(body)
 
-  // Find teacher
   const teacher = await findTeacherByEmail(email)
   if (!teacher || !teacher.password_hash) {
     return c.json({ error: 'Invalid credentials' }, 401)
   }
 
-  // Verify password using Bun's password API
   const isValid = await Bun.password.verify(password, teacher.password_hash)
   if (!isValid) {
     return c.json({ error: 'Invalid credentials' }, 401)
   }
 
-  // Generate tokens
   const user: AuthUser = {
     id: teacher.id,
     email: teacher.email,
+    firstName: teacher.first_name,
+    lastName: teacher.last_name,
     role: teacher.role || 'teacher',
     userType: 'teacher'
   }
@@ -46,7 +120,6 @@ authRoutes.post('/teacher/login', async (c) => {
   const refreshTokenId = randomUUID()
   const refreshToken = await generateRefreshToken(teacher.id, 'teacher', refreshTokenId)
 
-  // Store refresh token (hashed)
   const hashedRefreshToken = await Bun.password.hash(refreshToken)
   await storeRefreshToken({
     id: refreshTokenId,
@@ -56,7 +129,6 @@ authRoutes.post('/teacher/login', async (c) => {
     expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
   })
 
-  // Set refresh token as httpOnly cookie
   setCookie(c, 'refresh_token', refreshToken, AUTH_CONFIG.COOKIE_OPTIONS)
 
   return c.json({
@@ -66,6 +138,59 @@ authRoutes.post('/teacher/login', async (c) => {
       firstName: teacher.first_name,
       lastName: teacher.last_name,
       role: teacher.role || 'teacher'
+    },
+    accessToken
+  })
+})
+
+// Student login
+authRoutes.post('/student/login', async (c) => {
+  const body = await c.req.json()
+  const { email, password } = LoginSchema.parse(body)
+
+  const student = await findStudentByEmail(email)
+  if (!student || !student.password_hash) {
+    return c.json({ error: 'Invalid credentials' }, 401)
+  }
+
+  const isValid = await Bun.password.verify(password, student.password_hash)
+  if (!isValid) {
+    return c.json({ error: 'Invalid credentials' }, 401)
+  }
+
+  const user: AuthUser = {
+    id: student.id,
+    email: student.email,
+    firstName: student.first_name,
+    lastName: student.last_name,
+    role: 'student',
+    userType: 'student',
+    gradeLevel: student.grade_level
+  }
+
+  const accessToken = await generateAccessToken(user)
+  const refreshTokenId = randomUUID()
+  const refreshToken = await generateRefreshToken(student.id, 'student', refreshTokenId)
+
+  const hashedRefreshToken = await Bun.password.hash(refreshToken)
+  await storeRefreshToken({
+    id: refreshTokenId,
+    user_id: student.id,
+    user_type: 'student',
+    token_hash: hashedRefreshToken,
+    expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+  })
+
+  setCookie(c, 'refresh_token', refreshToken, AUTH_CONFIG.COOKIE_OPTIONS)
+
+  return c.json({
+    user: {
+      id: student.id,
+      email: student.email,
+      firstName: student.first_name,
+      lastName: student.last_name,
+      role: 'student',
+      gradeLevel: student.grade_level
     },
     accessToken
   })

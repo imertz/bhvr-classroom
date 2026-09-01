@@ -15,10 +15,10 @@ export interface Teacher {
   updated_at: string
 }
 
-/**
- * Input type for creating/updating
- */
-export type TeacherInput = Omit<Teacher, 'id' | 'created_at' | 'updated_at' | 'password_hash'> & { password?: string }
+export type TeacherInput = Omit<Teacher, 'id' | 'created_at' | 'updated_at' | 'password_hash' | 'role'> & {
+  role?: 'teacher' | 'admin';
+  password?: string;
+}
 
 /**
  * Zod schema for validation

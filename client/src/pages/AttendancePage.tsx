@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAttendanceStore, useStudentStore, useClassStore } from '../stores';
 import { Button } from '../components/ui/button';
+import { formatDate } from '../lib/utils';
 import type { Attendance, AttendanceInput } from 'shared/dist';
 
 export default function AttendancePage() {
@@ -18,12 +19,20 @@ export default function AttendancePage() {
   const { students, fetchStudents } = useStudentStore();
   const { classes, fetchClasses } = useClassStore();
 
+  const getTodayString = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<AttendanceInput>({
     student_id: '',
     class_id: '',
-    date: new Date().toISOString().split('T')[0],
+    date: getTodayString(),
     status: 'present',
     notes: '',
   });
@@ -36,8 +45,7 @@ export default function AttendancePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const dateTime = new Date(formData.date).toISOString();
-    const dataToSubmit = { ...formData, date: dateTime };
+    const dataToSubmit = { ...formData };
     
     if (editingId) {
       await updateAttendance(editingId, dataToSubmit);
@@ -55,7 +63,7 @@ export default function AttendancePage() {
     setFormData({
       student_id: attendance.student_id,
       class_id: attendance.class_id,
-      date: attendance.date.split('T')[0],
+      date: attendance.date.split('T')[0] || getTodayString(),
       status: attendance.status,
       notes: attendance.notes || '',
     });
@@ -66,7 +74,7 @@ export default function AttendancePage() {
     setFormData({
       student_id: '',
       class_id: '',
-      date: new Date().toISOString().split('T')[0],
+      date: getTodayString(),
       status: 'present',
       notes: '',
     });
@@ -76,10 +84,6 @@ export default function AttendancePage() {
     if (confirm('Are you sure you want to delete this attendance record?')) {
       await deleteAttendance(id);
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
   };
 
   const getStudentName = (studentId: string) => {

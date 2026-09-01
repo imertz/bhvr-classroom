@@ -24,7 +24,8 @@ export default function StudentFormPage() {
     first_name: '',
     last_name: '',
     date_of_birth: '',
-    grade_level: 1
+    grade_level: 1,
+    password: ''
   };
 
   const initialFormData: StudentInput = isEditing && currentStudent
@@ -33,7 +34,8 @@ export default function StudentFormPage() {
         first_name: currentStudent.first_name,
         last_name: currentStudent.last_name,
         date_of_birth: currentStudent.date_of_birth.split('T')[0],
-        grade_level: currentStudent.grade_level
+        grade_level: currentStudent.grade_level,
+        password: ''
       }
     : emptyFormData;
 
@@ -69,10 +71,9 @@ export default function StudentFormPage() {
     e.preventDefault();
     
     try {
-      // Convert date to ISO string for API
       const submitData = {
         ...formData,
-        date_of_birth: new Date(formData.date_of_birth).toISOString()
+        date_of_birth: formData.date_of_birth
       };
 
       if (isEditing && id) {
@@ -82,9 +83,10 @@ export default function StudentFormPage() {
         if (formData.first_name !== currentStudent?.first_name) updateData.first_name = formData.first_name;
         if (formData.last_name !== currentStudent?.last_name) updateData.last_name = formData.last_name;
         if (formData.date_of_birth !== currentStudent?.date_of_birth.split('T')[0]) {
-          updateData.date_of_birth = new Date(formData.date_of_birth).toISOString();
+          updateData.date_of_birth = formData.date_of_birth;
         }
         if (formData.grade_level !== currentStudent?.grade_level) updateData.grade_level = formData.grade_level;
+        if (formData.password) updateData.password = formData.password;
         
         await updateStudent(id, updateData);
       } else {
@@ -208,6 +210,22 @@ export default function StudentFormPage() {
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+            Password {isEditing ? '(leave blank to keep current)' : '(optional)'}
+          </label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            value={formData.password || ''}
+            onChange={handleInputChange}
+            minLength={8}
+            placeholder={isEditing ? 'Enter new password to change' : 'Default or student login password (min 8 chars)'}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+          />
         </div>
 
         <div className="flex gap-4">

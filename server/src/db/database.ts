@@ -42,9 +42,17 @@ export function initializeDatabase() {
     const dbExists = fs.existsSync(DB_PATH);
     db = new Database(DB_PATH, { create: true });
 
+    // Enable foreign keys, WAL mode, and busy timeout for reliability and concurrency
+    db.exec("PRAGMA foreign_keys = ON;");
+    db.exec("PRAGMA journal_mode = WAL;");
+    db.exec("PRAGMA busy_timeout = 5000;");
+
     if (!dbExists) {
       console.log("Creating database...");
-      const schema = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf-8");
+      const schemaFile = fs.existsSync(path.join(__dirname, "schema.sql"))
+        ? path.join(__dirname, "schema.sql")
+        : path.join(__dirname, "../../src/db/schema.sql");
+      const schema = fs.readFileSync(schemaFile, "utf-8");
       db.exec(schema);
       console.log("Database created successfully.");
     } else {
@@ -189,10 +197,12 @@ export async function deleteTeacher(id: string): Promise<boolean> {
 export async function createStudent(data: StudentInput): Promise<Student> {
   const now = new Date().toISOString();
   const id = randomUUID();
+  const passwordHash = data.password ? await Bun.password.hash(data.password) : null;
+  const role = (data as any).role || 'student';
   const query = db.query(
-    "INSERT INTO students (id, email, first_name, last_name, date_of_birth, grade_level, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *"
+    "INSERT INTO students (id, email, password_hash, first_name, last_name, date_of_birth, grade_level, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *"
   );
-  return query.get(id, data.email, data.first_name, data.last_name, data.date_of_birth, data.grade_level, now, now) as Student;
+  return query.get(id, data.email, passwordHash, data.first_name, data.last_name, data.date_of_birth, data.grade_level, role, now, now) as Student;
 }
 
 /**
@@ -236,7 +246,11 @@ export async function updateStudent(id: string, data: Partial<StudentInput>): Pr
   const params: any[] = [now];
 
   for (const [key, value] of Object.entries(data)) {
-    if (value !== undefined) {
+    if (key === 'password' && value) {
+      const hashedPassword = await Bun.password.hash(value as string);
+      updateQuery += `, password_hash = ?`;
+      params.push(hashedPassword);
+    } else if (value !== undefined) {
       updateQuery += `, ${key.replace(/([A-Z])/g, "_$1").toLowerCase()} = ?`;
       params.push(value);
     }
@@ -822,9 +836,9 @@ export async function findAllAnnouncements(): Promise<Announcement[]> {
  * @returns The updated announcement, or null if not found.
  */
 export async function updateAnnouncement(id: string, data: Partial<AnnouncementInput>): Promise<Announcement | null> {
-  const now = new Date().toISOString();
-  let updateQuery = "UPDATE announcements SET created_at = ?"; // This seems wrong, should be updated_at if we add it
-  const params: any[] = [now];
+  let updateQuery = "UPDATE announcements SET";
+  const params: any[] = [];
+  const updates: string[] = [];
 
   for (const [key, value] of Object.entries(data)) {
     if (value !== undefined) {
@@ -835,20 +849,24 @@ export async function updateAnnouncement(id: string, data: Partial<AnnouncementI
           if (!/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(expiresIso)) {
             expiresIso = expiresIso + ':00';
           }
-          updateQuery += `, expires_at = ?`;
+          updates.push("expires_at = ?");
           params.push(expiresIso);
         } else {
-          updateQuery += `, expires_at = ?`;
+          updates.push("expires_at = ?");
           params.push(null);
         }
       } else {
-        updateQuery += `, ${key.replace(/([A-Z])/g, "_$1").toLowerCase()} = ?`;
+        updates.push(`${key.replace(/([A-Z])/g, "_$1").toLowerCase()} = ?`);
         params.push(value);
       }
     }
   }
 
-  updateQuery += " WHERE id = ? RETURNING *";
+  if (updates.length === 0) {
+    return findAnnouncementById(id);
+  }
+
+  updateQuery += ` ${updates.join(', ')} WHERE id = ? RETURNING *`;
   params.push(id);
 
   const query = db.query(updateQuery);

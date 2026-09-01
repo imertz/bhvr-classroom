@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useStudentStore } from '../stores';
 import { Button } from '../components/ui/button';
 import { usePermissions } from '../hooks/usePermissions';
+import { formatDate } from '../lib/utils';
 import type { Student } from 'shared/dist';
 
 export default function StudentsPage() {
@@ -92,7 +93,7 @@ export default function StudentsPage() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-500">
-                    {new Date(student.date_of_birth).toLocaleDateString()}
+                    {formatDate(student.date_of_birth)}
                   </div>
                 </td>
                 {(canEdit || canDelete) && (

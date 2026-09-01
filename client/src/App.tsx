@@ -38,37 +38,45 @@ function App() {
             <Route path="announcements" element={<AnnouncementsPage />} />
             <Route path="submissions" element={<SubmissionsPage />} />
             <Route path="enrollments" element={<EnrollmentsPage />} />
-            <Route path="attendance" element={<AttendancePage />} />
-            <Route path="grades" element={<GradesPage />} />
+            <Route path="attendance" element={
+              <ProtectedRoute allowedRoles={['admin', 'teacher']}>
+                <AttendancePage />
+              </ProtectedRoute>
+            } />
+            <Route path="grades" element={
+              <ProtectedRoute allowedRoles={['admin', 'teacher']}>
+                <GradesPage />
+              </ProtectedRoute>
+            } />
             
-            {/* Protected form routes - require authentication */}
+            {/* Protected form routes - require authentication and appropriate roles */}
             <Route path="teachers/new" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['admin']}>
                 <TeacherFormPage />
               </ProtectedRoute>
             } />
             <Route path="teachers/:id/edit" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['admin']}>
                 <TeacherFormPage />
               </ProtectedRoute>
             } />
             <Route path="students/new" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['admin', 'teacher']}>
                 <StudentFormPage />
               </ProtectedRoute>
             } />
             <Route path="students/:id/edit" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['admin', 'teacher']}>
                 <StudentFormPage />
               </ProtectedRoute>
             } />
             <Route path="classes/new" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['admin', 'teacher']}>
                 <ClassFormPage />
               </ProtectedRoute>
             } />
             <Route path="classes/:id/edit" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['admin', 'teacher']}>
                 <ClassFormPage />
               </ProtectedRoute>
             } />

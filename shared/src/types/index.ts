@@ -14,3 +14,4 @@ export * from './grade';
 export * from './submission';
 export * from './announcement';
 export * from './common';
+export * from './auth';

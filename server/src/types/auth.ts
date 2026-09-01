@@ -1,30 +1,28 @@
-import type { JWTPayload } from 'hono/utils/jwt/types'
+import type { JWTPayload } from 'hono/utils/jwt/types';
+import type {
+  AuthUser,
+  AccessTokenPayload as SharedAccessTokenPayload,
+  RefreshTokenPayload as SharedRefreshTokenPayload
+} from 'shared/src/types/auth';
 
-export interface AuthUser {
-  id: string
-  email: string
-  role: 'teacher' | 'student' | 'admin'
-  userType: 'teacher' | 'student'
-}
+export type {
+  AuthUser,
+  LoginCredentials,
+  RegistrationData,
+  LoginResponse,
+  AuthResponse,
+  RefreshResponse
+} from 'shared/src/types/auth';
 
-export interface AccessTokenPayload extends JWTPayload {
-  user: AuthUser
-  type: 'access'
-}
-
-export interface RefreshTokenPayload extends JWTPayload {
-  userId: string
-  userType: 'teacher' | 'student'
-  tokenId: string
-  type: 'refresh'
-}
+export interface AccessTokenPayload extends SharedAccessTokenPayload, JWTPayload {}
+export interface RefreshTokenPayload extends SharedRefreshTokenPayload, JWTPayload {}
 
 export interface AuthVariables {
-  user?: AuthUser
-  jwtPayload?: AccessTokenPayload
+  user?: AuthUser;
+  jwtPayload?: AccessTokenPayload;
 }
 
 export interface RequiredAuthVariables {
-  user: AuthUser
-  jwtPayload: AccessTokenPayload
+  user: AuthUser;
+  jwtPayload: AccessTokenPayload;
 }

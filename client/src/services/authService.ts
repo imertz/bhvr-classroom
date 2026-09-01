@@ -1,41 +1,28 @@
 import { api } from '../lib/api';
-import type { AuthUser } from '../../../server/src/types/auth';
+import type {
+  AuthUser,
+  LoginCredentials,
+  RegistrationData,
+  LoginResponse,
+  AuthResponse,
+  RefreshResponse
+} from 'shared/dist';
 
-export interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
-export interface RegistrationData {
-  email: string;
-  password: string;
-  first_name: string;
-  last_name: string;
-}
-
-export interface LoginResponse {
-  user: AuthUser;
-  accessToken: string;
-  message: string;
-}
-
-export interface AuthResponse {
-  user: AuthUser;
-  message: string;
-}
-
-export interface RefreshResponse {
-  accessToken: string;
-  user: AuthUser;
-  message: string;
-}
+export type {
+  AuthUser,
+  LoginCredentials,
+  RegistrationData,
+  LoginResponse,
+  AuthResponse,
+  RefreshResponse
+};
 
 export const authService = {
   /**
-   * Login with email and password
+   * Login with email and password (supports teacher, admin, and student)
    */
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
-    const response = await api.post<LoginResponse>('/auth/teacher/login', credentials);
+    const response = await api.post<LoginResponse>('/auth/login', credentials);
     return response.data;
   },
 

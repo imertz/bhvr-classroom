@@ -40,8 +40,15 @@ apiClient.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
+    const requestUrl = originalRequest?.url || '';
+    const isAuthEndpoint = requestUrl.includes('/auth/teacher/login') ||
+                           requestUrl.includes('/auth/login') ||
+                           requestUrl.includes('/auth/teacher/register') ||
+                           requestUrl.includes('/auth/register') ||
+                           requestUrl.includes('/auth/refresh') ||
+                           requestUrl.includes('/auth/logout');
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest?._retry && !isAuthEndpoint) {
       if (isRefreshing) {
         // If refresh is already in progress, queue the request
         return new Promise((resolve, reject) => {
@@ -77,7 +84,7 @@ apiClient.interceptors.response.use(
         useAuthStore.getState().clearAuth();
 
         // Redirect to login page
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && window.location.pathname !== '/login' && window.location.pathname !== '/register') {
           window.location.href = '/login';
         }
 

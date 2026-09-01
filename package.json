@@ -20,6 +20,7 @@
     "build:server": "cd server && bun run build",
     "build": "bun run build:shared && bun run build:server && bun run build:client",
     "lint": "cd client && bun run lint",
+    "test": "bun test",
     "postinstall": "bun run build:shared && bun run build:server"
   },
   "keywords": [

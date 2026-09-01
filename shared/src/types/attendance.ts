@@ -25,7 +25,7 @@ export type AttendanceInput = Omit<Attendance, 'id' | 'recorded_at'>
 export const AttendanceSchema = z.object({
   student_id: z.string(),
   class_id: z.string(),
-  date: z.string().datetime(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}(?:T.*)?$/, { message: 'Invalid date format' }),
   status: z.enum(['present', 'absent', 'tardy', 'excused']),
   notes: z.string().optional().nullable(),
 })

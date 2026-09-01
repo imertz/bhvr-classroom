@@ -4,10 +4,11 @@ import { useAuthStore } from '../stores/authStore';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  allowedRoles?: string[];
 }
 
-export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
+export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+  const { isAuthenticated, isLoading, checkAuth, user } = useAuthStore();
   const location = useLocation();
 
   useEffect(() => {
@@ -51,6 +52,11 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // If specific roles are required, verify user's role
+  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/" replace />;
   }
 
   // Render protected content if authenticated

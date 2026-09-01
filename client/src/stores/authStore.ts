@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { AuthUser } from '../../../server/src/types/auth';
+import type { AuthUser } from 'shared/dist';
 import { authService, type LoginCredentials, type RegistrationData } from '../services/authService';
 
 interface AuthState {

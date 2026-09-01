@@ -14,7 +14,7 @@ export default function TeachersPage() {
     deleteTeacher, 
     clearError 
   } = useTeacherStore();
-  const { canEdit, canDelete, canViewAdmin, isAuthenticated } = usePermissions();
+  const { canViewAdmin, isAuthenticated } = usePermissions();
 
   useEffect(() => {
     fetchTeachers();
@@ -66,7 +66,7 @@ export default function TeachersPage() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Created
               </th>
-              {(canEdit || canDelete) && (
+              {canViewAdmin && (
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
@@ -89,24 +89,20 @@ export default function TeachersPage() {
                     {new Date(teacher.created_at).toLocaleDateString()}
                   </div>
                 </td>
-                {(canEdit || canDelete) && (
+                {canViewAdmin && (
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    {canEdit && (
-                      <Link 
-                        to={`/teachers/${teacher.id}/edit`}
-                        className="text-indigo-600 hover:text-indigo-900 mr-4"
-                      >
-                        Edit
-                      </Link>
-                    )}
-                    {canDelete && (
-                      <button
-                        onClick={() => handleDelete(teacher.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
-                      </button>
-                    )}
+                    <Link 
+                      to={`/teachers/${teacher.id}/edit`}
+                      className="text-indigo-600 hover:text-indigo-900 mr-4"
+                    >
+                      Edit
+                    </Link>
+                    <button
+                      onClick={() => handleDelete(teacher.id)}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      Delete
+                    </button>
                   </td>
                 )}
               </tr>
