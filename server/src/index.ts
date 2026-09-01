@@ -15,7 +15,7 @@ import { attendanceRoutes } from "./routes/attendance";
 import { announcementRoutes } from "./routes/announcements";
 
 // Import middleware
-import { authMiddleware, requireTeacher, requireAuth, optionalAuthMiddleware, requireAdmin } from "./middleware/auth";
+import { requireTeacher, requireAuth, optionalAuthMiddleware, requireAdmin } from "./middleware/auth";
 import { errorMiddleware } from "./middleware/error";
 
 // Initialize database
@@ -35,8 +35,6 @@ export const app = new Hono<{ Variables: AuthVariables }>()
 // Public routes
 app.get("/", (c) => c.text("Classroom Management API"));
 app.get("/health", (c) => c.json({ status: "ok" }));
-app.route("/auth", authRoutes);
-
 // Teachers routes - admin only for write operations, public read
 app.get('/api/teachers/*', optionalAuthMiddleware)
 app.post('/api/teachers', requireAuth, requireAdmin)
@@ -104,16 +102,20 @@ app.post('/api/attendance', requireAuth, requireTeacher)
 app.put('/api/attendance/*', requireAuth, requireTeacher)
 app.delete('/api/attendance/*', requireAuth, requireTeacher)
 
-// Mount the route handlers
-app.route("/api/teachers", teacherRoutes);
-app.route("/api/students", studentRoutes);
-app.route("/api/classes", classRoutes);
-app.route("/api/enrollments", enrollmentRoutes);
-app.route("/api/assignments", assignmentRoutes);
-app.route("/api/submissions", submissionRoutes);
-app.route("/api/grades", gradeRoutes);
-app.route("/api/attendance", attendanceRoutes);
-app.route("/api/announcements", announcementRoutes);
+// Mount the route handlers with chaining for Hono RPC type inference
+export const routes = app
+	.route("/auth", authRoutes)
+	.route("/api/teachers", teacherRoutes)
+	.route("/api/students", studentRoutes)
+	.route("/api/classes", classRoutes)
+	.route("/api/enrollments", enrollmentRoutes)
+	.route("/api/assignments", assignmentRoutes)
+	.route("/api/submissions", submissionRoutes)
+	.route("/api/grades", gradeRoutes)
+	.route("/api/attendance", attendanceRoutes)
+	.route("/api/announcements", announcementRoutes);
+
+export type AppType = typeof routes;
 
 export default {
 	port: 3000,

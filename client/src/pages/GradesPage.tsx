@@ -1,28 +1,34 @@
-import { useEffect, useState } from 'react';
-import { useGradeStore, useSubmissionStore, useAssignmentStore, useStudentStore, useTeacherStore } from '../stores';
+import { useState } from 'react';
+import { 
+  useGrades, 
+  useSubmissions, 
+  useAssignments, 
+  useStudents, 
+  useTeachers, 
+  useCreateGrade, 
+  useUpdateGrade, 
+  useDeleteGrade 
+} from '../hooks/queries';
 import { Button } from '../components/ui/button';
 import { usePermissions } from '../hooks/usePermissions';
 import { formatDateTime } from '../lib/utils';
 import type { Grade, GradeInput } from 'shared/dist';
 
 export default function GradesPage() {
-  const { 
-    grades, 
-    loading, 
-    error, 
-    fetchGrades, 
-    createGrade,
-    updateGrade,
-    deleteGrade, 
-    clearError 
-  } = useGradeStore();
+  const { data: grades = [], isLoading: loadingGrades, error: gradesError } = useGrades();
+  const { data: submissions = [], isLoading: loadingSubmissions } = useSubmissions();
+  const { data: assignments = [], isLoading: loadingAssignments } = useAssignments();
+  const { data: students = [], isLoading: loadingStudents } = useStudents();
+  const { data: teachers = [], isLoading: loadingTeachers } = useTeachers();
 
-  const { submissions, fetchSubmissions } = useSubmissionStore();
-  const { assignments, fetchAssignments } = useAssignmentStore();
-  const { students, fetchStudents } = useStudentStore();
-  const { teachers, fetchTeachers } = useTeacherStore();
+  const createGradeMutation = useCreateGrade();
+  const updateGradeMutation = useUpdateGrade();
+  const deleteGradeMutation = useDeleteGrade();
+
+  const loading = loadingGrades || loadingSubmissions || loadingAssignments || loadingStudents || loadingTeachers;
+  const error = (gradesError || createGradeMutation.error || updateGradeMutation.error || deleteGradeMutation.error) as Error | null;
+
   const { isAdmin, isTeacher, isStudent } = usePermissions();
-
   const canManageGrades = isAdmin || isTeacher;
 
   const [showForm, setShowForm] = useState(false);
@@ -34,24 +40,16 @@ export default function GradesPage() {
     graded_by: '',
   });
 
-  useEffect(() => {
-    fetchGrades();
-    fetchSubmissions();
-    fetchAssignments();
-    fetchStudents();
-    fetchTeachers();
-  }, [fetchGrades, fetchSubmissions, fetchAssignments, fetchStudents, fetchTeachers]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (editingId) {
-      await updateGrade(editingId, formData);
+      await updateGradeMutation.mutateAsync({ id: editingId, data: formData });
       setEditingId(null);
     } else {
-      await createGrade(formData);
+      await createGradeMutation.mutateAsync(formData);
     }
-    
+
     setShowForm(false);
     resetForm();
   };
@@ -78,7 +76,7 @@ export default function GradesPage() {
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this grade?')) {
-      await deleteGrade(id);
+      await deleteGradeMutation.mutateAsync(id);
     }
   };
 
@@ -171,13 +169,7 @@ export default function GradesPage() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error}
-          <button 
-            onClick={clearError}
-            className="ml-2 text-red-500 hover:text-red-700"
-          >
-            ×
-          </button>
+          Error: {error.message}
         </div>
       )}
 

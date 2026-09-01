@@ -27,7 +27,7 @@ export type AssignmentInput = Omit<Assignment, 'id' | 'created_at' | 'updated_at
 export const AssignmentSchema = z.object({
   class_id: z.string(),
   title: z.string(),
-  description: z.string().optional(),
+  description: z.string().nullish(),
   type: z.enum(['homework', 'quiz', 'test', 'project']),
   points_possible: z.number().int(),
   // Accept ISO-like datetime strings with minutes and optional seconds (e.g., YYYY-MM-DDTHH:MM or YYYY-MM-DDTHH:MM:SS)

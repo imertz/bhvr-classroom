@@ -1,119 +1,131 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { hc } from 'hono/client';
+import type { AppType } from 'server/src/client';
 import { useAuthStore } from '../stores/authStore';
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000';
 
-// Create axios instance
-const apiClient: AxiosInstance = axios.create({
-  baseURL: SERVER_URL,
-  withCredentials: true, // Include cookies for refresh tokens
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Request queue for handling concurrent requests during token refresh
 let isRefreshing = false;
 let requestQueue: Array<{
   resolve: (token: string) => void;
   reject: (error: unknown) => void;
 }> = [];
 
-// Request interceptor to add authorization header
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = useAuthStore.getState().accessToken;
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
+const customFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  const urlStr = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  const isAuthEndpoint = (
+    urlStr.includes('/auth/login') ||
+    urlStr.includes('/auth/teacher/login') ||
+    urlStr.includes('/auth/student/login') ||
+    urlStr.includes('/auth/teacher/register') ||
+    urlStr.includes('/auth/refresh') ||
+    urlStr.includes('/auth/logout')
+  );
+
+  const token = useAuthStore.getState().accessToken;
+  const headers = new Headers(init?.headers);
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
   }
-);
 
-// Response interceptor to handle 401 errors and token refresh
-apiClient.interceptors.response.use(
-  (response: AxiosResponse) => {
-    return response;
-  },
-  async (error) => {
-    const originalRequest = error.config;
-    const requestUrl = originalRequest?.url || '';
-    const isAuthEndpoint = requestUrl.includes('/auth/teacher/login') ||
-                           requestUrl.includes('/auth/login') ||
-                           requestUrl.includes('/auth/teacher/register') ||
-                           requestUrl.includes('/auth/register') ||
-                           requestUrl.includes('/auth/refresh') ||
-                           requestUrl.includes('/auth/logout');
+  const res = await fetch(input, {
+    ...init,
+    headers,
+    credentials: 'include',
+  });
 
-    if (error.response?.status === 401 && !originalRequest?._retry && !isAuthEndpoint) {
-      if (isRefreshing) {
-        // If refresh is already in progress, queue the request
-        return new Promise((resolve, reject) => {
-          requestQueue.push({ resolve, reject });
-        }).then((token) => {
-          originalRequest.headers.Authorization = `Bearer ${token}`;
-          return apiClient(originalRequest);
-        }).catch((err) => {
-          return Promise.reject(err);
+  if (res.status === 401 && !isAuthEndpoint) {
+    if (isRefreshing) {
+      return new Promise<string>((resolve, reject) => {
+        requestQueue.push({ resolve, reject });
+      }).then(async (newToken) => {
+        const retryHeaders = new Headers(init?.headers);
+        retryHeaders.set('Authorization', `Bearer ${newToken}`);
+        return fetch(input, {
+          ...init,
+          headers: retryHeaders,
+          credentials: 'include',
+        });
+      });
+    }
+
+    isRefreshing = true;
+    try {
+      await useAuthStore.getState().refreshAccessToken();
+      const newToken = useAuthStore.getState().accessToken;
+      if (newToken) {
+        requestQueue.forEach(({ resolve }) => resolve(newToken));
+        requestQueue = [];
+
+        const retryHeaders = new Headers(init?.headers);
+        retryHeaders.set('Authorization', `Bearer ${newToken}`);
+        return await fetch(input, {
+          ...init,
+          headers: retryHeaders,
+          credentials: 'include',
         });
       }
+    } catch (refreshError) {
+      requestQueue.forEach(({ reject }) => reject(refreshError));
+      requestQueue = [];
+      useAuthStore.getState().clearAuth();
 
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        await useAuthStore.getState().refreshAccessToken();
-        const newToken = useAuthStore.getState().accessToken;
-
-        if (newToken) {
-          // Process queued requests
-          requestQueue.forEach(({ resolve }) => resolve(newToken));
-          requestQueue = [];
-
-          // Retry original request
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
-          return apiClient(originalRequest);
-        }
-      } catch (refreshError) {
-        // Refresh failed, clear auth and redirect to login
-        requestQueue.forEach(({ reject }) => reject(refreshError));
-        requestQueue = [];
-        useAuthStore.getState().clearAuth();
-
-        // Redirect to login page
-        if (typeof window !== 'undefined' && window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-          window.location.href = '/login';
-        }
-
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+        window.location.href = '/login';
       }
+      return res;
+    } finally {
+      isRefreshing = false;
     }
-
-    return Promise.reject(error);
   }
-);
 
-// Wrapper functions for common HTTP methods
-export const api = {
-  get: <T = unknown>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
-    apiClient.get<T>(url, config),
-
-  post: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
-    apiClient.post<T>(url, data, config),
-
-  put: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
-    apiClient.put<T>(url, data, config),
-
-  patch: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
-    apiClient.patch<T>(url, data, config),
-
-  delete: <T = unknown>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
-    apiClient.delete<T>(url, config),
+  return res;
 };
 
-export default apiClient;
+export const client = hc<AppType>(SERVER_URL, {
+  headers: (): Record<string, string> => {
+    const token = useAuthStore.getState().accessToken;
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+  },
+  fetch: customFetch,
+});
+
+export async function unwrapJson<T = any>(
+  resPromise: Promise<Response | { ok: boolean; status: number; statusText?: string; json: () => Promise<any> }>
+): Promise<T> {
+  const res = await resPromise;
+  if (!res.ok) {
+    let errorMsg = `Request failed (${res.status})`;
+    try {
+      const body = (await res.json()) as { error?: unknown; message?: unknown };
+      if (body) {
+        if (typeof body.error === 'string') {
+          errorMsg = body.error;
+        } else if (typeof body.message === 'string') {
+          errorMsg = body.message;
+        } else if (body.error && typeof body.error === 'object') {
+          const errObj = body.error as { formErrors?: string[]; fieldErrors?: Record<string, string[]> };
+          if (errObj.formErrors && errObj.formErrors.length > 0) {
+            errorMsg = errObj.formErrors.join(', ');
+          } else if (errObj.fieldErrors) {
+            const fields = Object.entries(errObj.fieldErrors)
+              .map(([f, errs]) => `${f}: ${errs.join(', ')}`)
+              .join('; ');
+            if (fields) errorMsg = fields;
+          } else {
+            errorMsg = JSON.stringify(body.error);
+          }
+        }
+      }
+    } catch {
+      // Ignore JSON parse error
+    }
+    throw new Error(errorMsg);
+  }
+  return res.json() as Promise<T>;
+}
+
+export default client;

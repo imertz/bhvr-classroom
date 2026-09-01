@@ -1,5 +1,5 @@
 /**
- * Utility function to extract error message from axios error
+ * Utility function to extract error message from API errors
  */
 type ErrorWithResponse = {
   response?: {

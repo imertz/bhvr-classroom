@@ -987,7 +987,7 @@ export async function initializeAdminUser(): Promise<void> {
     }
 
     // Create admin user
-    const adminUser = await createTeacher({
+    await createTeacher({
       email: adminEmail,
       password: adminPassword,
       first_name: "Admin",

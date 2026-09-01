@@ -1,7 +1,5 @@
 import { createMiddleware } from 'hono/factory';
 import { jwt } from 'hono/jwt';
-import type { Context, Next } from 'hono';
-import { getCookie } from 'hono/cookie';
 import type { AuthVariables, RequiredAuthVariables, AccessTokenPayload } from '../types/auth';
 import { AUTH_CONFIG } from '../config/auth';
 
@@ -12,7 +10,6 @@ export const optionalAuthMiddleware = createMiddleware<{
   const authHeader = c.req.header('Authorization');
 
   if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
     const jwtMiddleware = jwt({
       secret: AUTH_CONFIG.ACCESS_TOKEN_SECRET,
       alg: 'HS256',
@@ -25,7 +22,7 @@ export const optionalAuthMiddleware = createMiddleware<{
           c.set('user', payload.user);
         }
       });
-    } catch (error) {
+    } catch {
       // Continue without setting user - token was invalid but that's ok
     }
   }
@@ -41,7 +38,6 @@ export const requireAuth = createMiddleware<{
   const authHeader = c.req.header('Authorization');
 
   if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
     const jwtMiddleware = jwt({
       secret: AUTH_CONFIG.ACCESS_TOKEN_SECRET,
       alg: 'HS256',
@@ -54,7 +50,7 @@ export const requireAuth = createMiddleware<{
           c.set('user', payload.user);
         }
       });
-    } catch (error) {
+    } catch {
       return c.json({ error: 'Invalid or expired token' }, 401);
     }
   }

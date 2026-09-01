@@ -1,22 +1,26 @@
-import { useEffect, useState } from 'react';
-import { useSubmissionStore, useAssignmentStore, useStudentStore } from '../stores';
+import { useState } from 'react';
+import { 
+  useSubmissions, 
+  useAssignments, 
+  useStudents, 
+  useCreateSubmission, 
+  useUpdateSubmission, 
+  useDeleteSubmission 
+} from '../hooks/queries';
 import { Button } from '../components/ui/button';
 import type { Submission, SubmissionInput } from 'shared/dist';
 
 export default function SubmissionsPage() {
-  const { 
-    submissions, 
-    loading, 
-    error, 
-    fetchSubmissions, 
-    createSubmission,
-    updateSubmission,
-    deleteSubmission, 
-    clearError 
-  } = useSubmissionStore();
+  const { data: submissions = [], isLoading: loadingSubmissions, error: submissionsError } = useSubmissions();
+  const { data: assignments = [], isLoading: loadingAssignments } = useAssignments();
+  const { data: students = [], isLoading: loadingStudents } = useStudents();
 
-  const { assignments, fetchAssignments } = useAssignmentStore();
-  const { students, fetchStudents } = useStudentStore();
+  const createSubmissionMutation = useCreateSubmission();
+  const updateSubmissionMutation = useUpdateSubmission();
+  const deleteSubmissionMutation = useDeleteSubmission();
+
+  const loading = loadingSubmissions || loadingAssignments || loadingStudents;
+  const error = (submissionsError || createSubmissionMutation.error || updateSubmissionMutation.error || deleteSubmissionMutation.error) as Error | null;
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -27,22 +31,16 @@ export default function SubmissionsPage() {
     status: 'submitted',
   });
 
-  useEffect(() => {
-    fetchSubmissions();
-    fetchAssignments();
-    fetchStudents();
-  }, [fetchSubmissions, fetchAssignments, fetchStudents]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (editingId) {
-      await updateSubmission(editingId, formData);
+      await updateSubmissionMutation.mutateAsync({ id: editingId, data: formData });
       setEditingId(null);
     } else {
-      await createSubmission(formData);
+      await createSubmissionMutation.mutateAsync(formData);
     }
-    
+
     setShowForm(false);
     resetForm();
   };
@@ -69,7 +67,7 @@ export default function SubmissionsPage() {
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this submission?')) {
-      await deleteSubmission(id);
+      await deleteSubmissionMutation.mutateAsync(id);
     }
   };
 
@@ -118,13 +116,7 @@ export default function SubmissionsPage() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error}
-          <button 
-            onClick={clearError}
-            className="ml-2 text-red-500 hover:text-red-700"
-          >
-            ×
-          </button>
+          Error: {error.message}
         </div>
       )}
 

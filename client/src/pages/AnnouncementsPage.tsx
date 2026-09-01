@@ -1,22 +1,26 @@
-import { useEffect, useState } from 'react';
-import { useAnnouncementStore, useClassStore, useTeacherStore } from '../stores';
+import { useState } from 'react';
+import { 
+  useAnnouncements, 
+  useClasses, 
+  useTeachers, 
+  useCreateAnnouncement, 
+  useUpdateAnnouncement, 
+  useDeleteAnnouncement 
+} from '../hooks/queries';
 import { Button } from '../components/ui/button';
 import type { Announcement, AnnouncementInput } from 'shared/dist';
 
 export default function AnnouncementsPage() {
-  const { 
-    announcements, 
-    loading, 
-    error, 
-    fetchAnnouncements, 
-    createAnnouncement,
-    updateAnnouncement,
-    deleteAnnouncement, 
-    clearError 
-  } = useAnnouncementStore();
+  const { data: announcements = [], isLoading: loadingAnnouncements, error: announcementsError } = useAnnouncements();
+  const { data: classes = [], isLoading: loadingClasses } = useClasses();
+  const { data: teachers = [], isLoading: loadingTeachers } = useTeachers();
 
-  const { classes, fetchClasses } = useClassStore();
-  const { teachers, fetchTeachers } = useTeacherStore();
+  const createAnnouncementMutation = useCreateAnnouncement();
+  const updateAnnouncementMutation = useUpdateAnnouncement();
+  const deleteAnnouncementMutation = useDeleteAnnouncement();
+
+  const loading = loadingAnnouncements || loadingClasses || loadingTeachers;
+  const error = (announcementsError || createAnnouncementMutation.error || updateAnnouncementMutation.error || deleteAnnouncementMutation.error) as Error | null;
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -28,22 +32,16 @@ export default function AnnouncementsPage() {
     expires_at: null,
   });
 
-  useEffect(() => {
-    fetchAnnouncements();
-    fetchClasses();
-    fetchTeachers();
-  }, [fetchAnnouncements, fetchClasses, fetchTeachers]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (editingId) {
-      await updateAnnouncement(editingId, formData);
+      await updateAnnouncementMutation.mutateAsync({ id: editingId, data: formData });
       setEditingId(null);
     } else {
-      await createAnnouncement(formData);
+      await createAnnouncementMutation.mutateAsync(formData);
     }
-    
+
     setShowForm(false);
     resetForm();
   };
@@ -72,7 +70,7 @@ export default function AnnouncementsPage() {
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this announcement?')) {
-      await deleteAnnouncement(id);
+      await deleteAnnouncementMutation.mutateAsync(id);
     }
   };
 
@@ -110,13 +108,7 @@ export default function AnnouncementsPage() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error}
-          <button 
-            onClick={clearError}
-            className="ml-2 text-red-500 hover:text-red-700"
-          >
-            ×
-          </button>
+          Error: {error.message}
         </div>
       )}
 

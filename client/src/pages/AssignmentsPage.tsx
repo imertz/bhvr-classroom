@@ -1,20 +1,16 @@
-import { useEffect, useState } from 'react';
-import { useAssignmentStore, useClassStore } from '../stores';
+import { useState } from 'react';
+import { useAssignments, useClasses, useCreateAssignment, useDeleteAssignment } from '../hooks/queries';
 import { Button } from '../components/ui/button';
 import type { Assignment, AssignmentInput } from 'shared/dist';
 
 export default function AssignmentsPage() {
-  const { 
-    assignments, 
-    loading, 
-    error, 
-    fetchAssignments, 
-    createAssignment,
-    deleteAssignment, 
-    clearError 
-  } = useAssignmentStore();
+  const { data: assignments = [], isLoading: loadingAssignments, error: assignmentsError } = useAssignments();
+  const { data: classes = [], isLoading: loadingClasses } = useClasses();
+  const createAssignmentMutation = useCreateAssignment();
+  const deleteAssignmentMutation = useDeleteAssignment();
 
-  const { classes, fetchClasses } = useClassStore();
+  const loading = loadingAssignments || loadingClasses;
+  const error = (assignmentsError || createAssignmentMutation.error || deleteAssignmentMutation.error) as Error | null;
 
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<AssignmentInput>({
@@ -26,14 +22,9 @@ export default function AssignmentsPage() {
     due_date: '',
   });
 
-  useEffect(() => {
-    fetchAssignments();
-    fetchClasses();
-  }, [fetchAssignments, fetchClasses]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await createAssignment(formData);
+    await createAssignmentMutation.mutateAsync(formData);
     setShowForm(false);
     setFormData({
       class_id: '',
@@ -47,7 +38,7 @@ export default function AssignmentsPage() {
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this assignment?')) {
-      await deleteAssignment(id);
+      await deleteAssignmentMutation.mutateAsync(id);
     }
   };
 
@@ -75,13 +66,7 @@ export default function AssignmentsPage() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error}
-          <button 
-            onClick={clearError}
-            className="ml-2 text-red-500 hover:text-red-700"
-          >
-            ×
-          </button>
+          Error: {error.message}
         </div>
       )}
 

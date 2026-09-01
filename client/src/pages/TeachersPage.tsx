@@ -1,28 +1,17 @@
-import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useTeacherStore } from '../stores';
+import { useTeachers, useDeleteTeacher } from '../hooks/queries';
 import { Button } from '../components/ui/button';
 import { usePermissions } from '../hooks/usePermissions';
 import type { Teacher } from 'shared/dist';
 
 export default function TeachersPage() {
-  const { 
-    teachers, 
-    loading, 
-    error, 
-    fetchTeachers, 
-    deleteTeacher, 
-    clearError 
-  } = useTeacherStore();
+  const { data: teachers = [], isLoading: loading, error } = useTeachers();
+  const deleteTeacherMutation = useDeleteTeacher();
   const { canViewAdmin, isAuthenticated } = usePermissions();
-
-  useEffect(() => {
-    fetchTeachers();
-  }, [fetchTeachers]);
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this teacher?')) {
-      await deleteTeacher(id);
+      await deleteTeacherMutation.mutateAsync(id);
     }
   };
 
@@ -43,13 +32,7 @@ export default function TeachersPage() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error}
-          <button 
-            onClick={clearError}
-            className="ml-2 text-red-500 hover:text-red-700"
-          >
-            ×
-          </button>
+          Error: {error instanceof Error ? error.message : 'An error occurred'}
         </div>
       )}
 

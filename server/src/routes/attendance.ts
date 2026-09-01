@@ -11,7 +11,8 @@
  */
 
 import { Hono } from 'hono'
-import { AttendanceSchema, type Attendance, type AttendanceInput } from 'shared/src/types/attendance'
+import { zValidator } from '@hono/zod-validator'
+import { AttendanceSchema } from 'shared/src/types/attendance'
 import type { AuthVariables } from '../types/auth'
 import {
   createAttendance,
@@ -23,123 +24,112 @@ import {
 } from '../db/database'
 
 export const attendanceRoutes = new Hono<{ Variables: AuthVariables }>()
+  /**
+   * List attendance records (student-scoped if student, all if teacher/admin)
+   */
+  .get('/', async (c) => {
+    const user = c.get('user')
 
-/**
- * List attendance records (student-scoped if student, all if teacher/admin)
- */
-attendanceRoutes.get('/', async (c) => {
-  const user = c.get('user')
+    try {
+      if (user?.role === 'student') {
+        const attendances = await findAttendancesByStudentId(user.id)
+        return c.json({ data: attendances, count: attendances.length })
+      }
 
-  try {
-    if (user?.role === 'student') {
-      const attendances = await findAttendancesByStudentId(user.id)
+      const attendances = await findAllAttendances()
       return c.json({ data: attendances, count: attendances.length })
+    } catch (error) {
+      console.error('Error listing attendance records:', error)
+      return c.json({ error: 'Failed to list attendance records' }, 500)
+    }
+  })
+
+  /**
+   * Get attendance records for a specific student
+   */
+  .get('/student/:studentId', async (c) => {
+    const user = c.get('user')
+    const studentId = c.req.param('studentId')
+
+    if (user?.role === 'student' && user.id !== studentId) {
+      return c.json({ error: 'Forbidden' }, 403)
     }
 
-    const attendances = await findAllAttendances()
-    return c.json({ data: attendances, count: attendances.length })
-  } catch (error) {
-    console.error('Error listing attendance records:', error)
-    return c.json({ error: 'Failed to list attendance records' }, 500)
-  }
-})
-
-/**
- * Get attendance records for a specific student
- */
-attendanceRoutes.get('/student/:studentId', async (c) => {
-  const user = c.get('user')
-  const studentId = c.req.param('studentId')
-
-  if (user?.role === 'student' && user.id !== studentId) {
-    return c.json({ error: 'Forbidden' }, 403)
-  }
-
-  try {
-    const attendances = await findAttendancesByStudentId(studentId)
-    return c.json({ data: attendances, count: attendances.length })
-  } catch (error) {
-    console.error('Error getting student attendance:', error)
-    return c.json({ error: 'Failed to get student attendance' }, 500)
-  }
-})
-
-/**
- * Get attendance record by ID
- */
-attendanceRoutes.get('/:id', async (c) => {
-  const id = c.req.param('id')
-
-  try {
-    const attendance = await findAttendanceById(id)
-    if (!attendance) {
-      return c.json({ error: 'Attendance record not found' }, 404)
+    try {
+      const attendances = await findAttendancesByStudentId(studentId)
+      return c.json({ data: attendances, count: attendances.length })
+    } catch (error) {
+      console.error('Error getting student attendance:', error)
+      return c.json({ error: 'Failed to get student attendance' }, 500)
     }
-    return c.json({ data: attendance })
-  } catch (error) {
-    console.error('Error getting attendance record:', error)
-    return c.json({ error: 'Failed to get attendance record' }, 500)
-  }
-})
+  })
 
-/**
- * Create new attendance record
- */
-attendanceRoutes.post('/', async (c) => {
-  const body = await c.req.json()
-  const result = AttendanceSchema.safeParse(body)
+  /**
+   * Get attendance record by ID
+   */
+  .get('/:id', async (c) => {
+    const id = c.req.param('id')
 
-  if (!result.success) {
-    return c.json({ error: result.error.flatten() }, 400)
-  }
-
-  try {
-    const attendance = await createAttendance(result.data)
-    return c.json({ data: attendance }, 201)
-  } catch (error) {
-    console.error('Error creating attendance record:', error)
-    return c.json({ error: 'Failed to create attendance record' }, 500)
-  }
-})
-
-/**
- * Update attendance record
- */
-attendanceRoutes.put('/:id', async (c) => {
-  const id = c.req.param('id')
-  const body = await c.req.json()
-  const result = AttendanceSchema.partial().safeParse(body)
-
-  if (!result.success) {
-    return c.json({ error: result.error.flatten() }, 400)
-  }
-
-  try {
-    const attendance = await updateAttendance(id, result.data)
-    if (!attendance) {
-      return c.json({ error: 'Attendance record not found' }, 404)
+    try {
+      const attendance = await findAttendanceById(id)
+      if (!attendance) {
+        return c.json({ error: 'Attendance record not found' }, 404)
+      }
+      return c.json({ data: attendance })
+    } catch (error) {
+      console.error('Error getting attendance record:', error)
+      return c.json({ error: 'Failed to get attendance record' }, 500)
     }
-    return c.json({ data: attendance })
-  } catch (error) {
-    console.error('Error updating attendance record:', error)
-    return c.json({ error: 'Failed to update attendance record' }, 500)
-  }
-})
+  })
 
-/**
- * Delete attendance record
- */
-attendanceRoutes.delete('/:id', async (c) => {
-  const id = c.req.param('id')
+  /**
+   * Create new attendance record
+   */
+  .post('/', zValidator('json', AttendanceSchema), async (c) => {
+    const data = c.req.valid('json')
 
-  try {
-    const deleted = await deleteAttendance(id)
-    if (!deleted) {
-      return c.json({ error: 'Attendance record not found' }, 404)
+    try {
+      const attendance = await createAttendance(data)
+      return c.json({ data: attendance }, 201)
+    } catch (error) {
+      console.error('Error creating attendance record:', error)
+      return c.json({ error: 'Failed to create attendance record' }, 500)
     }
-    return c.json({ message: 'Attendance record deleted successfully' })
-  } catch (error) {
-    console.error('Error deleting attendance record:', error)
-    return c.json({ error: 'Failed to delete attendance record' }, 500)
-  }
-})
+  })
+
+  /**
+   * Update attendance record
+   */
+  .put('/:id', zValidator('json', AttendanceSchema.partial()), async (c) => {
+    const id = c.req.param('id')
+    const data = c.req.valid('json')
+
+    try {
+      const attendance = await updateAttendance(id, data)
+      if (!attendance) {
+        return c.json({ error: 'Attendance record not found' }, 404)
+      }
+      return c.json({ data: attendance })
+    } catch (error) {
+      console.error('Error updating attendance record:', error)
+      return c.json({ error: 'Failed to update attendance record' }, 500)
+    }
+  })
+
+  /**
+   * Delete attendance record
+   */
+  .delete('/:id', async (c) => {
+    const id = c.req.param('id')
+
+    try {
+      const deleted = await deleteAttendance(id)
+      if (!deleted) {
+        return c.json({ error: 'Attendance record not found' }, 404)
+      }
+      return c.json({ message: 'Attendance record deleted successfully' })
+    } catch (error) {
+      console.error('Error deleting attendance record:', error)
+      return c.json({ error: 'Failed to delete attendance record' }, 500)
+    }
+  })

@@ -11,7 +11,8 @@
  */
 
 import { Hono } from 'hono'
-import { ClassSchema, type Class, type ClassInput } from 'shared/src/types/class'
+import { zValidator } from '@hono/zod-validator'
+import { ClassSchema } from 'shared/src/types/class'
 import type { AuthVariables } from '../types/auth'
 import {
   createClass,
@@ -23,118 +24,107 @@ import {
 } from '../db/database'
 
 export const classRoutes = new Hono<{ Variables: AuthVariables }>()
+  /**
+   * List classes (student-scoped if student, all otherwise)
+   */
+  .get('/', async (c) => {
+    const user = c.get('user')
 
-/**
- * List classes (student-scoped if student, all otherwise)
- */
-classRoutes.get('/', async (c) => {
-  const user = c.get('user')
+    try {
+      if (user?.role === 'student') {
+        const classes = await findClassesByStudentId(user.id)
+        return c.json({ data: classes, count: classes.length })
+      }
 
-  try {
-    if (user?.role === 'student') {
-      const classes = await findClassesByStudentId(user.id)
+      const classes = await findAllClasses()
       return c.json({ data: classes, count: classes.length })
+    } catch (error) {
+      console.error('Error listing classes:', error)
+      return c.json({ error: 'Failed to list classes' }, 500)
     }
+  })
 
-    const classes = await findAllClasses()
-    return c.json({ data: classes, count: classes.length })
-  } catch (error) {
-    console.error('Error listing classes:', error)
-    return c.json({ error: 'Failed to list classes' }, 500)
-  }
-})
+  /**
+   * Get classes for a specific student
+   */
+  .get('/student/:studentId', async (c) => {
+    const studentId = c.req.param('studentId')
 
-/**
- * Get classes for a specific student
- */
-classRoutes.get('/student/:studentId', async (c) => {
-  const studentId = c.req.param('studentId')
-
-  try {
-    const classes = await findClassesByStudentId(studentId)
-    return c.json({ data: classes, count: classes.length })
-  } catch (error) {
-    console.error('Error getting student classes:', error)
-    return c.json({ error: 'Failed to get student classes' }, 500)
-  }
-})
-
-/**
- * Get class by ID
- */
-classRoutes.get('/:id', async (c) => {
-  const id = c.req.param('id')
-
-  try {
-    const class_ = await findClassById(id)
-    if (!class_) {
-      return c.json({ error: 'Class not found' }, 404)
+    try {
+      const classes = await findClassesByStudentId(studentId)
+      return c.json({ data: classes, count: classes.length })
+    } catch (error) {
+      console.error('Error getting student classes:', error)
+      return c.json({ error: 'Failed to get student classes' }, 500)
     }
-    return c.json({ data: class_ })
-  } catch (error) {
-    console.error('Error getting class:', error)
-    return c.json({ error: 'Failed to get class' }, 500)
-  }
-})
+  })
 
-/**
- * Create new class
- */
-classRoutes.post('/', async (c) => {
-  const body = await c.req.json()
-  const result = ClassSchema.safeParse(body)
+  /**
+   * Get class by ID
+   */
+  .get('/:id', async (c) => {
+    const id = c.req.param('id')
 
-  if (!result.success) {
-    return c.json({ error: result.error.flatten() }, 400)
-  }
-
-  try {
-    const class_ = await createClass(result.data)
-    return c.json({ data: class_ }, 201)
-  } catch (error) {
-    console.error('Error creating class:', error)
-    return c.json({ error: 'Failed to create class' }, 500)
-  }
-})
-
-/**
- * Update class
- */
-classRoutes.put('/:id', async (c) => {
-  const id = c.req.param('id')
-  const body = await c.req.json()
-  const result = ClassSchema.partial().safeParse(body)
-
-  if (!result.success) {
-    return c.json({ error: result.error.flatten() }, 400)
-  }
-
-  try {
-    const class_ = await updateClass(id, result.data)
-    if (!class_) {
-      return c.json({ error: 'Class not found' }, 404)
+    try {
+      const class_ = await findClassById(id)
+      if (!class_) {
+        return c.json({ error: 'Class not found' }, 404)
+      }
+      return c.json({ data: class_ })
+    } catch (error) {
+      console.error('Error getting class:', error)
+      return c.json({ error: 'Failed to get class' }, 500)
     }
-    return c.json({ data: class_ })
-  } catch (error) {
-    console.error('Error updating class:', error)
-    return c.json({ error: 'Failed to update class' }, 500)
-  }
-})
+  })
 
-/**
- * Delete class
- */
-classRoutes.delete('/:id', async (c) => {
-  const id = c.req.param('id')
+  /**
+   * Create new class
+   */
+  .post('/', zValidator('json', ClassSchema), async (c) => {
+    const data = c.req.valid('json')
 
-  try {
-    const deleted = await deleteClass(id)
-    if (!deleted) {
-      return c.json({ error: 'Class not found' }, 404)
+    try {
+      const class_ = await createClass(data)
+      return c.json({ data: class_ }, 201)
+    } catch (error) {
+      console.error('Error creating class:', error)
+      return c.json({ error: 'Failed to create class' }, 500)
     }
-    return c.json({ message: 'Class deleted successfully' })
-  } catch (error) {
-    console.error('Error deleting class:', error)
-    return c.json({ error: 'Failed to delete class' }, 500)
-  }
-})
+  })
+
+  /**
+   * Update class
+   */
+  .put('/:id', zValidator('json', ClassSchema.partial()), async (c) => {
+    const id = c.req.param('id')
+    const data = c.req.valid('json')
+
+    try {
+      const class_ = await updateClass(id, data)
+      if (!class_) {
+        return c.json({ error: 'Class not found' }, 404)
+      }
+      return c.json({ data: class_ })
+    } catch (error) {
+      console.error('Error updating class:', error)
+      return c.json({ error: 'Failed to update class' }, 500)
+    }
+  })
+
+  /**
+   * Delete class
+   */
+  .delete('/:id', async (c) => {
+    const id = c.req.param('id')
+
+    try {
+      const deleted = await deleteClass(id)
+      if (!deleted) {
+        return c.json({ error: 'Class not found' }, 404)
+      }
+      return c.json({ message: 'Class deleted successfully' })
+    } catch (error) {
+      console.error('Error deleting class:', error)
+      return c.json({ error: 'Failed to delete class' }, 500)
+    }
+  })

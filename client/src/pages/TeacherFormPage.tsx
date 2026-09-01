@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useTeacherStore } from '../stores';
+import { useTeacher, useCreateTeacher, useUpdateTeacher } from '../hooks/queries';
 import { Button } from '../components/ui/button';
 import type { TeacherInput } from 'shared/dist';
 
@@ -8,16 +8,13 @@ export default function TeacherFormPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEditing = Boolean(id);
-  
-  const { 
-    currentTeacher, 
-    loading, 
-    error, 
-    fetchTeacher, 
-    createTeacher, 
-    updateTeacher, 
-    clearError 
-  } = useTeacherStore();
+
+  const { data: currentTeacher, isLoading: loadingTeacher } = useTeacher(id);
+  const createTeacherMutation = useCreateTeacher();
+  const updateTeacherMutation = useUpdateTeacher();
+
+  const loading = loadingTeacher || createTeacherMutation.isPending || updateTeacherMutation.isPending;
+  const error = (createTeacherMutation.error || updateTeacherMutation.error) as Error | null;
 
   const emptyFormData: TeacherInput = {
     email: '',
@@ -59,15 +56,9 @@ export default function TeacherFormPage() {
     });
   };
 
-  useEffect(() => {
-    if (isEditing && id) {
-      fetchTeacher(id);
-    }
-  }, [isEditing, id, fetchTeacher]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       if (isEditing && id) {
         // For updates, only send changed fields and don't require password
@@ -76,15 +67,13 @@ export default function TeacherFormPage() {
         if (formData.first_name !== currentTeacher?.first_name) updateData.first_name = formData.first_name;
         if (formData.last_name !== currentTeacher?.last_name) updateData.last_name = formData.last_name;
         if (formData.password) updateData.password = formData.password;
-        
-        await updateTeacher(id, updateData);
+
+        await updateTeacherMutation.mutateAsync({ id, data: updateData });
       } else {
-        await createTeacher(formData);
+        await createTeacherMutation.mutateAsync(formData);
       }
-      
-      if (!error) {
-        navigate('/teachers');
-      }
+
+      navigate('/teachers');
     } catch (err) {
       console.error('Error saving teacher:', err);
     }
@@ -107,13 +96,7 @@ export default function TeacherFormPage() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error}
-          <button 
-            onClick={clearError}
-            className="ml-2 text-red-500 hover:text-red-700"
-          >
-            ×
-          </button>
+          Error: {error.message}
         </div>
       )}
 

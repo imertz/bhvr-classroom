@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useStudentStore } from '../stores';
+import { useStudent, useCreateStudent, useUpdateStudent } from '../hooks/queries';
 import { Button } from '../components/ui/button';
 import type { StudentInput } from 'shared/dist';
 
@@ -8,16 +8,13 @@ export default function StudentFormPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEditing = Boolean(id);
-  
-  const { 
-    currentStudent, 
-    loading, 
-    error, 
-    fetchStudent, 
-    createStudent, 
-    updateStudent, 
-    clearError 
-  } = useStudentStore();
+
+  const { data: currentStudent, isLoading: loadingStudent } = useStudent(id);
+  const createStudentMutation = useCreateStudent();
+  const updateStudentMutation = useUpdateStudent();
+
+  const loading = loadingStudent || createStudentMutation.isPending || updateStudentMutation.isPending;
+  const error = (createStudentMutation.error || updateStudentMutation.error) as Error | null;
 
   const emptyFormData: StudentInput = {
     email: '',
@@ -61,15 +58,9 @@ export default function StudentFormPage() {
     });
   };
 
-  useEffect(() => {
-    if (isEditing && id) {
-      fetchStudent(id);
-    }
-  }, [isEditing, id, fetchStudent]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       const submitData = {
         ...formData,
@@ -87,15 +78,13 @@ export default function StudentFormPage() {
         }
         if (formData.grade_level !== currentStudent?.grade_level) updateData.grade_level = formData.grade_level;
         if (formData.password) updateData.password = formData.password;
-        
-        await updateStudent(id, updateData);
+
+        await updateStudentMutation.mutateAsync({ id, data: updateData });
       } else {
-        await createStudent(submitData);
+        await createStudentMutation.mutateAsync(submitData);
       }
-      
-      if (!error) {
-        navigate('/students');
-      }
+
+      navigate('/students');
     } catch (err) {
       console.error('Error saving student:', err);
     }
@@ -121,13 +110,7 @@ export default function StudentFormPage() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error}
-          <button 
-            onClick={clearError}
-            className="ml-2 text-red-500 hover:text-red-700"
-          >
-            ×
-          </button>
+          Error: {error.message}
         </div>
       )}
 

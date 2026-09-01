@@ -25,7 +25,7 @@ export type TeacherInput = Omit<Teacher, 'id' | 'created_at' | 'updated_at' | 'p
  */
 export const TeacherSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8),
+  password: z.string().min(8).optional(),
   first_name: z.string(),
   last_name: z.string(),
   role: z.enum(['teacher', 'admin']).default('teacher'),

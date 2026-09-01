@@ -1,28 +1,17 @@
-import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useClassStore } from '../stores';
+import { useClasses, useDeleteClass } from '../hooks/queries';
 import { Button } from '../components/ui/button';
 import { usePermissions } from '../hooks/usePermissions';
 import type { Class } from 'shared/dist';
 
 export default function ClassesPage() {
-  const { 
-    classes, 
-    loading, 
-    error, 
-    fetchClasses, 
-    deleteClass, 
-    clearError 
-  } = useClassStore();
+  const { data: classes = [], isLoading: loading, error } = useClasses();
+  const deleteClassMutation = useDeleteClass();
   const { canCreate, canEdit, canDelete, isAuthenticated } = usePermissions();
-
-  useEffect(() => {
-    fetchClasses();
-  }, [fetchClasses]);
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this class?')) {
-      await deleteClass(id);
+      await deleteClassMutation.mutateAsync(id);
     }
   };
 
@@ -43,13 +32,7 @@ export default function ClassesPage() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error}
-          <button 
-            onClick={clearError}
-            className="ml-2 text-red-500 hover:text-red-700"
-          >
-            ×
-          </button>
+          Error: {error instanceof Error ? error.message : 'An error occurred'}
         </div>
       )}
 

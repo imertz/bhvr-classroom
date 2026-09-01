@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useClassStore, useTeacherStore } from '../stores';
+import { useClass, useCreateClass, useUpdateClass, useTeachers } from '../hooks/queries';
 import { Button } from '../components/ui/button';
 import type { ClassInput } from 'shared/dist';
 
@@ -8,18 +8,14 @@ export default function ClassFormPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEditing = Boolean(id);
-  
-  const { 
-    currentClass, 
-    loading, 
-    error, 
-    fetchClass, 
-    createClass, 
-    updateClass, 
-    clearError 
-  } = useClassStore();
 
-  const { teachers, fetchTeachers } = useTeacherStore();
+  const { data: currentClass, isLoading: loadingClass } = useClass(id);
+  const { data: teachers = [] } = useTeachers();
+  const createClassMutation = useCreateClass();
+  const updateClassMutation = useUpdateClass();
+
+  const loading = loadingClass || createClassMutation.isPending || updateClassMutation.isPending;
+  const error = (createClassMutation.error || updateClassMutation.error) as Error | null;
 
   const emptyFormData: ClassInput = {
     name: '',
@@ -61,21 +57,10 @@ export default function ClassFormPage() {
     });
   };
 
-  useEffect(() => {
-    fetchTeachers(); // Load teachers for the dropdown
-  }, [fetchTeachers]);
-
-  useEffect(() => {
-    if (isEditing && id) {
-      fetchClass(id);
-    }
-  }, [isEditing, id, fetchClass]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
-      // Clean up the form data, converting empty strings to null for optional fields
       const submitData: ClassInput = {
         ...formData,
         room_number: formData.room_number || null,
@@ -83,7 +68,6 @@ export default function ClassFormPage() {
       };
 
       if (isEditing && id) {
-        // For updates, only send changed fields
         const updateData: Partial<ClassInput> = {};
         if (formData.name !== currentClass?.name) updateData.name = formData.name;
         if (formData.subject !== currentClass?.subject) updateData.subject = formData.subject;
@@ -94,15 +78,13 @@ export default function ClassFormPage() {
         if (formData.schedule !== (currentClass?.schedule || null)) {
           updateData.schedule = formData.schedule || null;
         }
-        
-        await updateClass(id, updateData);
+
+        await updateClassMutation.mutateAsync({ id, data: updateData });
       } else {
-        await createClass(submitData);
+        await createClassMutation.mutateAsync(submitData);
       }
-      
-      if (!error) {
-        navigate('/classes');
-      }
+
+      navigate('/classes');
     } catch (err) {
       console.error('Error saving class:', err);
     }
@@ -128,13 +110,7 @@ export default function ClassFormPage() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error}
-          <button 
-            onClick={clearError}
-            className="ml-2 text-red-500 hover:text-red-700"
-          >
-            ×
-          </button>
+          Error: {error.message}
         </div>
       )}
 

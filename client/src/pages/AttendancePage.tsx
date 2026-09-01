@@ -1,26 +1,30 @@
-import { useEffect, useState } from 'react';
-import { useAttendanceStore, useStudentStore, useClassStore } from '../stores';
+import { useState } from 'react';
+import { 
+  useAttendanceRecords, 
+  useStudents, 
+  useClasses, 
+  useCreateAttendance, 
+  useUpdateAttendance, 
+  useDeleteAttendance 
+} from '../hooks/queries';
 import { Button } from '../components/ui/button';
 import { usePermissions } from '../hooks/usePermissions';
 import { formatDate } from '../lib/utils';
 import type { Attendance, AttendanceInput } from 'shared/dist';
 
 export default function AttendancePage() {
-  const { 
-    attendances, 
-    loading, 
-    error, 
-    fetchAttendances, 
-    createAttendance,
-    updateAttendance,
-    deleteAttendance, 
-    clearError 
-  } = useAttendanceStore();
+  const { data: attendances = [], isLoading: loadingAttendances, error: attendancesError } = useAttendanceRecords();
+  const { data: students = [], isLoading: loadingStudents } = useStudents();
+  const { data: classes = [], isLoading: loadingClasses } = useClasses();
 
-  const { students, fetchStudents } = useStudentStore();
-  const { classes, fetchClasses } = useClassStore();
+  const createAttendanceMutation = useCreateAttendance();
+  const updateAttendanceMutation = useUpdateAttendance();
+  const deleteAttendanceMutation = useDeleteAttendance();
+
+  const loading = loadingAttendances || loadingStudents || loadingClasses;
+  const error = (attendancesError || createAttendanceMutation.error || updateAttendanceMutation.error || deleteAttendanceMutation.error) as Error | null;
+
   const { isAdmin, isTeacher, isStudent } = usePermissions();
-
   const canManageAttendance = isAdmin || isTeacher;
 
   const getTodayString = () => {
@@ -41,23 +45,17 @@ export default function AttendancePage() {
     notes: '',
   });
 
-  useEffect(() => {
-    fetchAttendances();
-    fetchStudents();
-    fetchClasses();
-  }, [fetchAttendances, fetchStudents, fetchClasses]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const dataToSubmit = { ...formData };
-    
+
     if (editingId) {
-      await updateAttendance(editingId, dataToSubmit);
+      await updateAttendanceMutation.mutateAsync({ id: editingId, data: dataToSubmit });
       setEditingId(null);
     } else {
-      await createAttendance(dataToSubmit);
+      await createAttendanceMutation.mutateAsync(dataToSubmit);
     }
-    
+
     setShowForm(false);
     resetForm();
   };
@@ -86,7 +84,7 @@ export default function AttendancePage() {
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this attendance record?')) {
-      await deleteAttendance(id);
+      await deleteAttendanceMutation.mutateAsync(id);
     }
   };
 
@@ -166,13 +164,7 @@ export default function AttendancePage() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error}
-          <button 
-            onClick={clearError}
-            className="ml-2 text-red-500 hover:text-red-700"
-          >
-            ×
-          </button>
+          Error: {error.message}
         </div>
       )}
 

@@ -1,22 +1,26 @@
-import { useEffect, useState } from 'react';
-import { useEnrollmentStore, useStudentStore, useClassStore } from '../stores';
+import { useState } from 'react';
+import { 
+  useEnrollments, 
+  useStudents, 
+  useClasses, 
+  useCreateEnrollment, 
+  useUpdateEnrollment, 
+  useDeleteEnrollment 
+} from '../hooks/queries';
 import { Button } from '../components/ui/button';
 import type { Enrollment, EnrollmentInput } from 'shared/dist';
 
 export default function EnrollmentsPage() {
-  const { 
-    enrollments, 
-    loading, 
-    error, 
-    fetchEnrollments, 
-    createEnrollment,
-    updateEnrollment,
-    deleteEnrollment, 
-    clearError 
-  } = useEnrollmentStore();
+  const { data: enrollments = [], isLoading: loadingEnrollments, error: enrollmentsError } = useEnrollments();
+  const { data: students = [], isLoading: loadingStudents } = useStudents();
+  const { data: classes = [], isLoading: loadingClasses } = useClasses();
 
-  const { students, fetchStudents } = useStudentStore();
-  const { classes, fetchClasses } = useClassStore();
+  const createEnrollmentMutation = useCreateEnrollment();
+  const updateEnrollmentMutation = useUpdateEnrollment();
+  const deleteEnrollmentMutation = useDeleteEnrollment();
+
+  const loading = loadingEnrollments || loadingStudents || loadingClasses;
+  const error = (enrollmentsError || createEnrollmentMutation.error || updateEnrollmentMutation.error || deleteEnrollmentMutation.error) as Error | null;
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -26,22 +30,16 @@ export default function EnrollmentsPage() {
     status: 'active',
   });
 
-  useEffect(() => {
-    fetchEnrollments();
-    fetchStudents();
-    fetchClasses();
-  }, [fetchEnrollments, fetchStudents, fetchClasses]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (editingId) {
-      await updateEnrollment(editingId, formData);
+      await updateEnrollmentMutation.mutateAsync({ id: editingId, data: formData });
       setEditingId(null);
     } else {
-      await createEnrollment(formData);
+      await createEnrollmentMutation.mutateAsync(formData);
     }
-    
+
     setShowForm(false);
     resetForm();
   };
@@ -66,7 +64,7 @@ export default function EnrollmentsPage() {
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this enrollment?')) {
-      await deleteEnrollment(id);
+      await deleteEnrollmentMutation.mutateAsync(id);
     }
   };
 
@@ -123,13 +121,7 @@ export default function EnrollmentsPage() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error}
-          <button 
-            onClick={clearError}
-            className="ml-2 text-red-500 hover:text-red-700"
-          >
-            ×
-          </button>
+          Error: {error.message}
         </div>
       )}
 

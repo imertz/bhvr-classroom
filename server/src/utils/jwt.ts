@@ -1,4 +1,4 @@
-import { sign, verify, decode } from 'hono/jwt'
+import { sign } from 'hono/jwt'
 import type { AccessTokenPayload, RefreshTokenPayload, AuthUser } from '../types/auth'
 import { AUTH_CONFIG } from '../config/auth'
 

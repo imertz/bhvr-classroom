@@ -1,29 +1,18 @@
-import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useStudentStore } from '../stores';
+import { useStudents, useDeleteStudent } from '../hooks/queries';
 import { Button } from '../components/ui/button';
 import { usePermissions } from '../hooks/usePermissions';
 import { formatDate } from '../lib/utils';
 import type { Student } from 'shared/dist';
 
 export default function StudentsPage() {
-  const { 
-    students, 
-    loading, 
-    error, 
-    fetchStudents, 
-    deleteStudent, 
-    clearError 
-  } = useStudentStore();
+  const { data: students = [], isLoading: loading, error } = useStudents();
+  const deleteStudentMutation = useDeleteStudent();
   const { canCreate, canEdit, canDelete, isAuthenticated } = usePermissions();
-
-  useEffect(() => {
-    fetchStudents();
-  }, [fetchStudents]);
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this student?')) {
-      await deleteStudent(id);
+      await deleteStudentMutation.mutateAsync(id);
     }
   };
 
@@ -44,13 +33,7 @@ export default function StudentsPage() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error}
-          <button 
-            onClick={clearError}
-            className="ml-2 text-red-500 hover:text-red-700"
-          >
-            ×
-          </button>
+          Error: {error instanceof Error ? error.message : 'An error occurred'}
         </div>
       )}
 
