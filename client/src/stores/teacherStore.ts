@@ -28,7 +28,7 @@ export const useTeacherStore = create<TeacherStore>((set, get) => ({
     try {
       const response = await api.get<PaginatedData<Teacher>>('/api/teachers');
       set({ teachers: response.data.data, loading: false });
-    } catch (error: any) {
+    } catch (error) {
       set({ error: getErrorMessage(error, 'Failed to fetch teachers'), loading: false });
     }
   },
@@ -38,7 +38,7 @@ export const useTeacherStore = create<TeacherStore>((set, get) => ({
     try {
       const response = await api.get<{ data: Teacher }>(`/api/teachers/${id}`);
       set({ currentTeacher: response.data.data, loading: false });
-    } catch (error: any) {
+    } catch (error) {
       set({ error: getErrorMessage(error, 'Failed to fetch teacher'), loading: false });
     }
   },
@@ -49,7 +49,7 @@ export const useTeacherStore = create<TeacherStore>((set, get) => ({
       await api.post('/api/teachers', data);
       // Refresh the teachers list
       await get().fetchTeachers();
-    } catch (error: any) {
+    } catch (error) {
       set({ error: getErrorMessage(error, 'Failed to create teacher'), loading: false });
     }
   },
@@ -63,7 +63,7 @@ export const useTeacherStore = create<TeacherStore>((set, get) => ({
       if (get().currentTeacher?.id === id) {
         await get().fetchTeacher(id);
       }
-    } catch (error: any) {
+    } catch (error) {
       set({ error: getErrorMessage(error, 'Failed to update teacher'), loading: false });
     }
   },
@@ -79,7 +79,7 @@ export const useTeacherStore = create<TeacherStore>((set, get) => ({
         currentTeacher: currentTeacher?.id === id ? null : currentTeacher,
         loading: false
       });
-    } catch (error: any) {
+    } catch (error) {
       set({ error: getErrorMessage(error, 'Failed to delete teacher'), loading: false });
     }
   },

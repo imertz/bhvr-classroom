@@ -21,13 +21,45 @@ export default function ClassFormPage() {
 
   const { teachers, fetchTeachers } = useTeacherStore();
 
-  const [formData, setFormData] = useState<ClassInput>({
+  const emptyFormData: ClassInput = {
     name: '',
     subject: '',
     teacher_id: '',
     room_number: null,
     schedule: null
-  });
+  };
+
+  const initialFormData: ClassInput = isEditing && currentClass
+    ? {
+        name: currentClass.name,
+        subject: currentClass.subject,
+        teacher_id: currentClass.teacher_id,
+        room_number: currentClass.room_number || null,
+        schedule: currentClass.schedule || null
+      }
+    : emptyFormData;
+
+  const [formDraft, setFormDraft] = useState<{
+    id: string | undefined;
+    data: ClassInput;
+  } | null>(null);
+
+  const formData = formDraft && formDraft.id === id ? formDraft.data : initialFormData;
+
+  const updateFormData = (
+    update: ClassInput | ((previous: ClassInput) => ClassInput)
+  ) => {
+    setFormDraft(previousDraft => {
+      const previousData = previousDraft && previousDraft.id === id
+        ? previousDraft.data
+        : initialFormData;
+
+      return {
+        id,
+        data: typeof update === 'function' ? update(previousData) : update
+      };
+    });
+  };
 
   useEffect(() => {
     fetchTeachers(); // Load teachers for the dropdown
@@ -38,18 +70,6 @@ export default function ClassFormPage() {
       fetchClass(id);
     }
   }, [isEditing, id, fetchClass]);
-
-  useEffect(() => {
-    if (isEditing && currentClass) {
-      setFormData({
-        name: currentClass.name,
-        subject: currentClass.subject,
-        teacher_id: currentClass.teacher_id,
-        room_number: currentClass.room_number || null,
-        schedule: currentClass.schedule || null
-      });
-    }
-  }, [isEditing, currentClass]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,7 +110,7 @@ export default function ClassFormPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ 
+    updateFormData(prev => ({
       ...prev, 
       [name]: value === '' ? null : value 
     }));

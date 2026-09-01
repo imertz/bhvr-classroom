@@ -65,7 +65,7 @@ export default function RegistrationPage() {
         last_name: formData.lastName,
       });
       navigate('/');
-    } catch (err) {
+    } catch {
       // Error is handled by the store
     }
   };

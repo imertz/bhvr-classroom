@@ -19,31 +19,51 @@ export default function StudentFormPage() {
     clearError 
   } = useStudentStore();
 
-  const [formData, setFormData] = useState<StudentInput>({
+  const emptyFormData: StudentInput = {
     email: '',
     first_name: '',
     last_name: '',
     date_of_birth: '',
     grade_level: 1
-  });
+  };
+
+  const initialFormData: StudentInput = isEditing && currentStudent
+    ? {
+        email: currentStudent.email,
+        first_name: currentStudent.first_name,
+        last_name: currentStudent.last_name,
+        date_of_birth: currentStudent.date_of_birth.split('T')[0],
+        grade_level: currentStudent.grade_level
+      }
+    : emptyFormData;
+
+  const [formDraft, setFormDraft] = useState<{
+    id: string | undefined;
+    data: StudentInput;
+  } | null>(null);
+
+  const formData = formDraft && formDraft.id === id ? formDraft.data : initialFormData;
+
+  const updateFormData = (
+    update: StudentInput | ((previous: StudentInput) => StudentInput)
+  ) => {
+    setFormDraft(previousDraft => {
+      const previousData = previousDraft && previousDraft.id === id
+        ? previousDraft.data
+        : initialFormData;
+
+      return {
+        id,
+        data: typeof update === 'function' ? update(previousData) : update
+      };
+    });
+  };
 
   useEffect(() => {
     if (isEditing && id) {
       fetchStudent(id);
     }
   }, [isEditing, id, fetchStudent]);
-
-  useEffect(() => {
-    if (isEditing && currentStudent) {
-      setFormData({
-        email: currentStudent.email,
-        first_name: currentStudent.first_name,
-        last_name: currentStudent.last_name,
-        date_of_birth: currentStudent.date_of_birth.split('T')[0], // Convert to YYYY-MM-DD format
-        grade_level: currentStudent.grade_level
-      });
-    }
-  }, [isEditing, currentStudent]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,7 +101,7 @@ export default function StudentFormPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    setFormData(prev => ({ 
+    updateFormData(prev => ({
       ...prev, 
       [name]: type === 'number' ? parseInt(value) || 0 : value 
     }));

@@ -19,31 +19,51 @@ export default function TeacherFormPage() {
     clearError 
   } = useTeacherStore();
 
-  const [formData, setFormData] = useState<TeacherInput>({
+  const emptyFormData: TeacherInput = {
     email: '',
     first_name: '',
     last_name: '',
     password: '',
     role: 'teacher'
-  });
+  };
+
+  const initialFormData: TeacherInput = isEditing && currentTeacher
+    ? {
+        email: currentTeacher.email,
+        first_name: currentTeacher.first_name,
+        last_name: currentTeacher.last_name,
+        password: '',
+        role: currentTeacher.role
+      }
+    : emptyFormData;
+
+  const [formDraft, setFormDraft] = useState<{
+    id: string | undefined;
+    data: TeacherInput;
+  } | null>(null);
+
+  const formData = formDraft && formDraft.id === id ? formDraft.data : initialFormData;
+
+  const updateFormData = (
+    update: TeacherInput | ((previous: TeacherInput) => TeacherInput)
+  ) => {
+    setFormDraft(previousDraft => {
+      const previousData = previousDraft && previousDraft.id === id
+        ? previousDraft.data
+        : initialFormData;
+
+      return {
+        id,
+        data: typeof update === 'function' ? update(previousData) : update
+      };
+    });
+  };
 
   useEffect(() => {
     if (isEditing && id) {
       fetchTeacher(id);
     }
   }, [isEditing, id, fetchTeacher]);
-
-  useEffect(() => {
-    if (isEditing && currentTeacher) {
-      setFormData({
-        email: currentTeacher.email,
-        first_name: currentTeacher.first_name,
-        last_name: currentTeacher.last_name,
-        password: '', // Don't pre-fill password for security
-        role: currentTeacher.role
-      });
-    }
-  }, [isEditing, currentTeacher]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +92,7 @@ export default function TeacherFormPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    updateFormData(prev => ({ ...prev, [name]: value }));
   };
 
   if (loading && isEditing) {

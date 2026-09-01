@@ -177,7 +177,7 @@ export default function SubmissionsPage() {
                 </label>
                 <select
                   value={formData.status}
-                  onChange={(e) => setFormData({...formData, status: e.target.value as any})}
+                  onChange={(e) => setFormData({...formData, status: e.target.value as NonNullable<SubmissionInput['status']>})}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="submitted">Submitted</option>
