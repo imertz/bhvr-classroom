@@ -10,6 +10,7 @@ import TeacherFormPage from './pages/TeacherFormPage';
 import StudentsPage from './pages/StudentsPage';
 import StudentFormPage from './pages/StudentFormPage';
 import ClassesPage from './pages/ClassesPage';
+import ClassDetailsPage from './pages/ClassDetailsPage';
 import ClassFormPage from './pages/ClassFormPage';
 import AssignmentsPage from './pages/AssignmentsPage';
 import AttendancePage from './pages/AttendancePage';
@@ -34,6 +35,7 @@ function App() {
             <Route path="teachers" element={<TeachersPage />} />
             <Route path="students" element={<StudentsPage />} />
             <Route path="classes" element={<ClassesPage />} />
+            <Route path="classes/:id" element={<ClassDetailsPage />} />
             <Route path="assignments" element={<AssignmentsPage />} />
             <Route path="announcements" element={<AnnouncementsPage />} />
             <Route path="submissions" element={<SubmissionsPage />} />

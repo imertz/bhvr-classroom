@@ -2,8 +2,7 @@ import { describe, it, expect, beforeAll } from "bun:test";
 import { app } from "../index";
 import { initializeDatabase, createTeacher, createStudent } from "../db/database";
 import { generateAccessToken } from "../utils/jwt";
-import type { AuthUser } from "../types/auth";
-import type { Teacher, Student, Class, Enrollment, Assignment, Submission, Grade, Attendance } from "shared";
+import type { Teacher, Student, Class, ClassDetails, Enrollment, Assignment, Submission, Grade, Attendance } from "shared";
 
 let adminToken = "";
 let teacherToken = "";
@@ -200,6 +199,29 @@ describe("API Routes & Role-Based Access Control", () => {
       // SAFETY: GET /api/classes returns data array of classes
       const body = (await res.json()) as { data: Class[] };
       expect(body.data.some((c) => c.id === testClassId)).toBe(true);
+    });
+
+    it("should get complete class details by ID", async () => {
+      const res = await app.request(`/api/classes/${testClassId}/details`);
+      expect(res.status).toBe(200);
+      // SAFETY: GET /api/classes/:id/details returns ClassDetails in data
+      const body = (await res.json()) as { data: ClassDetails };
+      expect(body.data).toBeDefined();
+      expect(body.data.class.id).toBe(testClassId);
+      expect(body.data.class.name).toBe("Biology 101");
+      expect(body.data.teacher).toBeDefined();
+      expect(body.data.teacher?.id).toBe(testTeacherId);
+      expect(Array.isArray(body.data.enrollments)).toBe(true);
+      expect(Array.isArray(body.data.assignments)).toBe(true);
+      expect(Array.isArray(body.data.announcements)).toBe(true);
+      expect(Array.isArray(body.data.recentAttendance)).toBe(true);
+      expect(body.data.stats).toBeDefined();
+      expect(body.data.stats.totalEnrollments).toBeGreaterThanOrEqual(0);
+    });
+
+    it("should return 404 for non-existent class details", async () => {
+      const res = await app.request("/api/classes/non-existent-class-id/details");
+      expect(res.status).toBe(404);
     });
   });
 

@@ -51,6 +51,28 @@ export const classRoutes = new Hono<{ Variables: AuthVariables }>()
   })
 
   /**
+   * Get complete class details by ID
+   */
+  .get('/:id/details', async (c) => {
+    const id = c.req.param('id')
+
+    try {
+      const details = await appRuntime.runPromise(
+        ClassRepo.use((repo) => repo.getDetails(id)).pipe(
+          Effect.catchTag('NotFoundError', () => Effect.succeed(null))
+        )
+      )
+      if (!details) {
+        return c.json({ error: 'Class not found' }, 404)
+      }
+      return c.json({ data: details })
+    } catch (error) {
+      console.error('Error getting class details:', error)
+      return c.json({ error: 'Failed to get class details' }, 500)
+    }
+  })
+
+  /**
    * Get class by ID
    */
   .get('/:id', async (c) => {

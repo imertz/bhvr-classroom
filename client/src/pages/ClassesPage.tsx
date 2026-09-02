@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useClasses, useDeleteClass } from '../hooks/queries';
+import { useClasses, useDeleteClass, useTeachers } from '../hooks/queries';
 import { Button } from '../components/ui/button';
 import {
   Cell,
@@ -16,14 +16,28 @@ import { usePermissions } from '../hooks/usePermissions';
 import type { Class } from 'shared/dist';
 
 export default function ClassesPage() {
-  const { data: classes = [], isLoading: loading, error } = useClasses();
+  const { data: classes = [], isLoading: loadingClasses, error: classesError } = useClasses();
+  const { data: teachers = [], isLoading: loadingTeachers } = useTeachers();
   const deleteClassMutation = useDeleteClass();
   const { canCreate, canEdit, canDelete, isAuthenticated } = usePermissions();
+
+  const loading = loadingClasses || loadingTeachers;
+  const error = classesError || deleteClassMutation.error;
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this class?')) {
       await deleteClassMutation.mutateAsync(id);
     }
+  };
+
+  const getTeacherName = (teacherId: string) => {
+    const teacher = teachers.find(t => t.id === teacherId);
+    return teacher ? `${teacher.first_name} ${teacher.last_name}` : teacherId;
+  };
+
+  const getTeacherEmail = (teacherId: string) => {
+    const teacher = teachers.find(t => t.id === teacherId);
+    return teacher?.email || undefined;
   };
 
   const showActions = canEdit || canDelete;
@@ -66,10 +80,11 @@ export default function ClassesPage() {
       ) : (
         <RecordTable
           columns={[
-            { label: 'Name', width: 20 },
+            { label: 'Name', width: 22 },
             { label: 'Subject', width: 16 },
-            { label: 'Teacher ID', width: 32 },
-            { label: 'Room', width: 12 },
+            { label: 'Instructor', width: 22 },
+            { label: 'Room', width: 10 },
+            { label: null, width: 8 },
             ...(showActions ? [{ label: null, width: 14 }] : []),
           ]}
         >
@@ -82,12 +97,27 @@ export default function ClassesPage() {
                 deleteClassMutation.variables === classItem.id
               }
             >
-              <Cell tone="primary">{classItem.name}</Cell>
+              <Cell tone="primary">
+                <Link
+                  to={`/classes/${classItem.id}`}
+                  className="transition-colors duration-100 hover:text-signal hover:underline"
+                >
+                  {classItem.name}
+                </Link>
+              </Cell>
               <Cell>{classItem.subject}</Cell>
-              <Cell tone="code" title={classItem.teacher_id}>
-                {classItem.teacher_id}
+              <Cell title={getTeacherEmail(classItem.teacher_id)}>
+                {getTeacherName(classItem.teacher_id)}
               </Cell>
               <Cell tone="numeral">{classItem.room_number || '—'}</Cell>
+              <td className="py-4 pr-6 align-middle">
+                <Link
+                  to={`/classes/${classItem.id}`}
+                  className="micro transition-colors duration-100 hover:text-signal"
+                >
+                  Details →
+                </Link>
+              </td>
               {showActions && (
                 <RecordActions
                   editTo={`/classes/${classItem.id}/edit`}
@@ -103,3 +133,4 @@ export default function ClassesPage() {
     </div>
   );
 }
+

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { client, unwrapJson } from '../../lib/api';
-import type { Class, ClassInput } from 'shared/dist';
+import type { Class, ClassInput, ClassDetails } from 'shared/dist';
 
 export const classKeys = {
   all: ['classes'] as const,
@@ -8,6 +8,7 @@ export const classKeys = {
   list: () => [...classKeys.lists()] as const,
   details: () => [...classKeys.all, 'detail'] as const,
   detail: (id: string) => [...classKeys.details(), id] as const,
+  fullDetails: (id: string) => [...classKeys.detail(id), 'full'] as const,
 };
 
 export function useClasses() {
@@ -25,6 +26,19 @@ export function useClass(id?: string) {
     queryKey: classKeys.detail(id || ''),
     queryFn: async (): Promise<Class> => {
       const res = await unwrapJson<{ data: Class }>(client.api.classes[':id'].$get({ param: { id: id! } }));
+      return res.data;
+    },
+    enabled: Boolean(id),
+  });
+}
+
+export function useClassDetails(id?: string) {
+  return useQuery({
+    queryKey: classKeys.fullDetails(id || ''),
+    queryFn: async (): Promise<ClassDetails> => {
+      const res = await unwrapJson<{ data: ClassDetails }>(
+        client.api.classes[':id'].details.$get({ param: { id: id! } })
+      );
       return res.data;
     },
     enabled: Boolean(id),
