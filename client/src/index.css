@@ -3,11 +3,22 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ==========================================================================
+   CLASSROOM — INSTITUTIONAL GRID
+   A Swiss-systematic design language: white ground, hairline rules, one
+   saturated signal colour, mono micro-labels, zero radius, zero decoration.
+   ========================================================================== */
+
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  /* Corners are square. Everywhere. No exceptions. */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+
+  --font-sans: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -26,6 +37,16 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  /* System-specific tokens */
+  --color-signal: var(--signal);
+  --color-signal-foreground: var(--signal-foreground);
+  --color-signal-tint: var(--signal-tint);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-ink: var(--foreground);
+  --color-paper: var(--background);
+
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -42,79 +63,384 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --radius: 0px;
+
+  /* Ground & ink */
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+
+  /* Hierarchy */
+  --primary: #0a0a0a;
+  --primary-foreground: #ffffff;
+  --secondary: #f2f2f0;
+  --secondary-foreground: #0a0a0a;
+  --muted: #f6f6f4;
+  --muted-foreground: #6b6b68;
+
+  /* The single signal colour. Used for state, never for decoration. */
+  --signal: #0033ff;
+  --signal-foreground: #ffffff;
+  --signal-tint: #eef1ff;
+  --accent: #eef1ff;
+  --accent-foreground: #0033ff;
+
+  --destructive: #d31f0f;
+
+  /* Rules — the structural material of this system */
+  --rule: #e3e3e0;
+  --rule-strong: #0a0a0a;
+  --border: #e3e3e0;
+  --input: #c4c4c0;
+  --ring: #0033ff;
+
+  --chart-1: #0033ff;
+  --chart-2: #0a0a0a;
+  --chart-3: #6b6b68;
+  --chart-4: #d31f0f;
+  --chart-5: #c4c4c0;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-primary: #0033ff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f6f6f4;
+  --sidebar-accent-foreground: #0a0a0a;
+  --sidebar-border: #e3e3e0;
+  --sidebar-ring: #0033ff;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #0a0a0a;
+  --foreground: #f2f2f0;
+  --card: #101010;
+  --card-foreground: #f2f2f0;
+  --popover: #101010;
+  --popover-foreground: #f2f2f0;
+
+  --primary: #f2f2f0;
+  --primary-foreground: #0a0a0a;
+  --secondary: #1a1a1a;
+  --secondary-foreground: #f2f2f0;
+  --muted: #141414;
+  --muted-foreground: #9a9a96;
+
+  --signal: #5573ff;
+  --signal-foreground: #06060a;
+  --signal-tint: #10162e;
+  --accent: #10162e;
+  --accent-foreground: #93a6ff;
+
+  --destructive: #ff5c4a;
+
+  --rule: #242422;
+  --rule-strong: #f2f2f0;
+  --border: #242422;
+  --input: #3a3a38;
+  --ring: #5573ff;
+
+  --chart-1: #5573ff;
+  --chart-2: #f2f2f0;
+  --chart-3: #9a9a96;
+  --chart-4: #ff5c4a;
+  --chart-5: #3a3a38;
+
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #f2f2f0;
+  --sidebar-primary: #5573ff;
+  --sidebar-primary-foreground: #06060a;
+  --sidebar-accent: #141414;
+  --sidebar-accent-foreground: #f2f2f0;
+  --sidebar-border: #242422;
+  --sidebar-ring: #5573ff;
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-variation-settings: "wdth" 100;
+    /* Tabular figures throughout — this is a system of records. */
+    font-feature-settings: "tnum" 1, "lnum" 1;
+    letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background-color: var(--signal);
+    color: var(--signal-foreground);
+  }
+
+  /* Square, unmistakable focus. Never a soft glow. */
+  :focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: 2px;
+    border-radius: 0;
+  }
+
+  h1, h2, h3, h4 {
+    font-variation-settings: "wdth" 100;
+    letter-spacing: -0.035em;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--background);
+    border-left: 1px solid var(--rule);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--muted-foreground);
+    border: 3px solid var(--background);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--signal);
+  }
+}
+
+@keyframes rule-draw {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Indeterminate progress: a rule that sweeps, not a spinner. */
+@keyframes sweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+@keyframes wipe-in {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+@layer components {
+  /* ==========================================================================
+     TYPOGRAPHIC INSTRUMENTS
+     ========================================================================== */
+
+  /* Mono micro-label: the connective tissue of the whole system. */
+  .micro {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    line-height: 1;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--muted-foreground);
+  }
+
+  .micro-ink {
+    color: var(--foreground);
+  }
+
+  .micro-signal {
+    color: var(--signal);
+  }
+
+  /* Extended display type — headlines set wide and tight. */
+  .display {
+    font-family: var(--font-sans);
+    font-weight: 700;
+    font-variation-settings: "wdth" 112;
+    letter-spacing: -0.045em;
+    line-height: 0.9;
+    text-wrap: balance;
+  }
+
+  /* Condensed index numerals — the 01/10 register marks. */
+  .index-numeral {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stat-numeral {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-variation-settings: "wdth" 78;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    line-height: 0.86;
+  }
+
+  /* ==========================================================================
+     STRUCTURAL MATERIALS
+     ========================================================================== */
+
+  /* Faint vertical column guides — the grid, made visible. */
+  .grid-guides {
+    background-image: repeating-linear-gradient(
+      to right,
+      var(--rule) 0,
+      var(--rule) 1px,
+      transparent 1px,
+      transparent calc(100% / 6)
+    );
+    background-position: 0 0;
+  }
+
+  /* Paper tooth: a whisper of texture so flat white isn't dead white. */
+  .tooth::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    z-index: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Corner registration mark — printer's crosshair. */
+  .reg-mark {
+    position: relative;
+  }
+  .reg-mark::after {
+    content: "";
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    width: 7px;
+    height: 7px;
+    border-top: 1px solid var(--signal);
+    border-left: 1px solid var(--signal);
+  }
+
+  /* Hairline field: inputs are ruled lines, not pills. */
+  .field {
+    width: 100%;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--input);
+    padding: 0.625rem 0 0.5rem;
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    color: var(--foreground);
+    letter-spacing: -0.01em;
+    transition: border-color 140ms linear, background-color 140ms linear;
+  }
+  .field::placeholder {
+    color: var(--muted-foreground);
+    opacity: 0.55;
+  }
+  .field:hover:not(:disabled) {
+    border-bottom-color: var(--muted-foreground);
+  }
+  .field:focus {
+    outline: none;
+    border-bottom-color: var(--signal);
+    border-bottom-width: 2px;
+    padding-bottom: calc(0.5rem - 1px);
+  }
+  .field:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .field:-webkit-autofill,
+  .field:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--foreground);
+    box-shadow: 0 0 0 1000px var(--background) inset;
+  }
+
+  /* Select: same ruled line, with a drawn chevron instead of the OS widget. */
+  .field-select {
+    appearance: none;
+    padding-right: 1.5rem;
+    background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+      linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position: right 0.55rem center, right 0.3rem center;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    cursor: pointer;
+  }
+
+  /* Textarea: a ruled box rather than a single line. */
+  .field-box {
+    border: 1px solid var(--input);
+    padding: 0.625rem 0.75rem;
+    line-height: 1.6;
+    resize: vertical;
+  }
+  .field-box:hover:not(:disabled) {
+    border-color: var(--muted-foreground);
+  }
+  .field-box:focus {
+    border-color: var(--signal);
+    border-width: 1px;
+    box-shadow: inset 0 0 0 1px var(--signal);
+    padding-bottom: 0.625rem;
+  }
+
+  /* ==========================================================================
+     MOTION — one orchestrated entrance, then stillness.
+     ========================================================================== */
+
+  .anim-rule {
+    transform-origin: left center;
+    animation: rule-draw 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .anim-rise {
+    animation: rise 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .anim-sweep {
+    animation: sweep 900ms cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  }
+
+  .anim-wipe {
+    animation: wipe-in 640ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Staggered reveal for indexed lists — reads top-to-bottom like a printout. */
+  .stagger > * { animation: rise 520ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .stagger > *:nth-child(1) { animation-delay: 40ms; }
+  .stagger > *:nth-child(2) { animation-delay: 80ms; }
+  .stagger > *:nth-child(3) { animation-delay: 120ms; }
+  .stagger > *:nth-child(4) { animation-delay: 160ms; }
+  .stagger > *:nth-child(5) { animation-delay: 200ms; }
+  .stagger > *:nth-child(6) { animation-delay: 240ms; }
+  .stagger > *:nth-child(7) { animation-delay: 280ms; }
+  .stagger > *:nth-child(8) { animation-delay: 320ms; }
+  .stagger > *:nth-child(9) { animation-delay: 360ms; }
+  .stagger > *:nth-child(10) { animation-delay: 400ms; }
+
+  .lag-1 { animation-delay: 60ms; }
+  .lag-2 { animation-delay: 140ms; }
+  .lag-3 { animation-delay: 220ms; }
+  .lag-4 { animation-delay: 300ms; }
+  .lag-5 { animation-delay: 420ms; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .anim-rule,
+    .anim-rise,
+    .anim-wipe,
+    .stagger > * {
+      animation: none !important;
+    }
+    *, *::before, *::after {
+      transition-duration: 0.01ms !important;
+    }
   }
 }

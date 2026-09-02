@@ -1,6 +1,17 @@
 import { Link } from 'react-router-dom';
 import { useClasses, useDeleteClass } from '../hooks/queries';
 import { Button } from '../components/ui/button';
+import {
+  Cell,
+  RecordActions,
+  RecordEmpty,
+  RecordError,
+  RecordHeader,
+  RecordLink,
+  RecordLoading,
+  RecordRow,
+  RecordTable,
+} from '../components/ui/record';
 import { usePermissions } from '../hooks/usePermissions';
 import type { Class } from 'shared/dist';
 
@@ -15,109 +26,80 @@ export default function ClassesPage() {
     }
   };
 
-  if (loading) {
-    return <div className="max-w-4xl mx-auto p-6">Loading classes...</div>;
-  }
+  const showActions = canEdit || canDelete;
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Classes</h1>
-        {canCreate && (
-          <Button asChild>
-            <Link to="/classes/new">Add Class</Link>
-          </Button>
-        )}
-      </div>
+    <div>
+      <RecordHeader
+        eyebrow="CLSS · Register"
+        title="Classes"
+        count={loading ? undefined : classes.length}
+        countLabel="on record"
+        action={
+          canCreate && (
+            <Button asChild>
+              <Link to="/classes/new">Add class</Link>
+            </Button>
+          )
+        }
+      />
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error instanceof Error ? error.message : 'An error occurred'}
-        </div>
-      )}
+      {error && <RecordError error={error} />}
 
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Name
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Subject
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Teacher ID
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Room
-              </th>
-              {(canEdit || canDelete) && (
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+      {loading ? (
+        <RecordLoading label="Reading class records" />
+      ) : classes.length === 0 ? (
+        <RecordEmpty label="No classes on record">
+          {canCreate ? (
+            <>
+              The register is empty.{' '}
+              <RecordLink to="/classes/new">Add the first class</RecordLink>.
+            </>
+          ) : isAuthenticated ? (
+            <>Contact an administrator to add classes.</>
+          ) : (
+            <>
+              <RecordLink to="/login">Sign in</RecordLink> to manage classes.
+            </>
+          )}
+        </RecordEmpty>
+      ) : (
+        <RecordTable
+          columns={[
+            { label: 'Name', className: 'w-[20%]' },
+            { label: 'Subject', className: 'w-[16%]' },
+            { label: 'Teacher ID', className: 'w-[32%]' },
+            { label: 'Room', className: 'w-[12%]' },
+            ...(showActions ? [{ label: null, className: 'w-[14%]' }] : []),
+          ]}
+        >
+          {classes.map((classItem: Class, i) => (
+            <RecordRow
+              key={classItem.id}
+              index={i}
+              isPending={
+                deleteClassMutation.isPending &&
+                deleteClassMutation.variables === classItem.id
+              }
+            >
+              <Cell tone="primary">{classItem.name}</Cell>
+              <Cell>{classItem.subject}</Cell>
+              <Cell tone="code" title={classItem.teacher_id}>
+                {classItem.teacher_id}
+              </Cell>
+              <Cell tone="numeral">{classItem.room_number || '—'}</Cell>
+              {showActions && (
+                <RecordActions
+                  editTo={`/classes/${classItem.id}/edit`}
+                  onDelete={() => handleDelete(classItem.id)}
+                  canEdit={canEdit}
+                  canDelete={canDelete}
+                />
               )}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {classes.map((classItem: Class) => (
-              <tr key={classItem.id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">
-                    {classItem.name}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500">{classItem.subject}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500">{classItem.teacher_id}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500">{classItem.room_number || 'N/A'}</div>
-                </td>
-                {(canEdit || canDelete) && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    {canEdit && (
-                      <Link 
-                        to={`/classes/${classItem.id}/edit`}
-                        className="text-indigo-600 hover:text-indigo-900 mr-4"
-                      >
-                        Edit
-                      </Link>
-                    )}
-                    {canDelete && (
-                      <button
-                        onClick={() => handleDelete(classItem.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        
-        {classes.length === 0 && !loading && (
-          <div className="text-center py-8 text-gray-500">
-            No classes found.{' '}
-            {canCreate ? (
-              <Link to="/classes/new" className="text-indigo-600 hover:text-indigo-900">
-                Add the first class
-              </Link>
-            ) : isAuthenticated ? (
-              <span>Contact an administrator to add classes.</span>
-            ) : (
-              <Link to="/login" className="text-indigo-600 hover:text-indigo-900">
-                Login to manage classes
-              </Link>
-            )}
-          </div>
-        )}
-      </div>
+            </RecordRow>
+          ))}
+        </RecordTable>
+      )}
     </div>
   );
 }

@@ -1,18 +1,42 @@
 import { useState } from 'react';
-import { 
-  useGrades, 
-  useSubmissions, 
-  useAssignments, 
-  useStudents, 
-  useTeachers, 
-  useCreateGrade, 
-  useUpdateGrade, 
-  useDeleteGrade 
+import {
+  useGrades,
+  useSubmissions,
+  useAssignments,
+  useStudents,
+  useTeachers,
+  useCreateGrade,
+  useUpdateGrade,
+  useDeleteGrade
 } from '../hooks/queries';
 import { Button } from '../components/ui/button';
+import {
+  Cell,
+  Counter,
+  CounterBand,
+  Field,
+  RecordActions,
+  RecordEmpty,
+  RecordError,
+  RecordHeader,
+  RecordLoading,
+  RecordPanel,
+  RecordRow,
+  RecordTable,
+  ScoreBar,
+} from '../components/ui/record';
 import { usePermissions } from '../hooks/usePermissions';
 import { formatDateTime } from '../lib/utils';
 import type { Grade, GradeInput } from 'shared/dist';
+
+/** Letter standing, split from its descriptor so each can be set separately. */
+const standingFor = (percentage: number) => {
+  if (percentage >= 90) return { letter: 'A', note: 'Excellent' };
+  if (percentage >= 80) return { letter: 'B', note: 'Good' };
+  if (percentage >= 70) return { letter: 'C', note: 'Satisfactory' };
+  if (percentage >= 60) return { letter: 'D', note: 'Needs work' };
+  return { letter: 'F', note: 'Failing' };
+};
 
 export default function GradesPage() {
   const { data: grades = [], isLoading: loadingGrades, error: gradesError } = useGrades();
@@ -80,23 +104,29 @@ export default function GradesPage() {
     }
   };
 
+  const closeForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    resetForm();
+  };
+
   const getSubmissionInfo = (submissionId: string) => {
     const submission = submissions.find(s => s.id === submissionId);
     if (!submission) return 'Unknown Submission';
-    
+
     const assignment = assignments.find(a => a.id === submission.assignment_id);
     const student = students.find(s => s.id === submission.student_id);
-    
+
     const assignmentTitle = assignment?.title || 'Unknown Assignment';
     const studentName = student ? `${student.first_name} ${student.last_name}` : 'Unknown Student';
-    
+
     return `${assignmentTitle} - ${studentName}`;
   };
 
   const getAssignmentPoints = (submissionId: string) => {
     const submission = submissions.find(s => s.id === submissionId);
     if (!submission) return 0;
-    
+
     const assignment = assignments.find(a => a.id === submission.assignment_id);
     return assignment?.points_possible || 0;
   };
@@ -118,77 +148,69 @@ export default function GradesPage() {
     }, 0) / grades.length
   ) : 0;
 
-  if (loading) {
-    return <div className="max-w-6xl mx-auto p-6">Loading grades...</div>;
-  }
+  const standing = standingFor(averagePercentage);
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">{isStudent ? 'My Grades' : 'Grades'}</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {isStudent ? 'Your academic progress and scores' : 'Track and record student assignment evaluations'}
-          </p>
-        </div>
-        {canManageGrades && (
-          <Button onClick={() => setShowForm(true)}>
-            Add Grade
-          </Button>
-        )}
-      </div>
+    <div>
+      <RecordHeader
+        eyebrow="GRDS · Register"
+        title={isStudent ? 'My Grades' : 'Grades'}
+        subtitle={
+          isStudent
+            ? 'Your academic progress, scored against each assignment.'
+            : 'Recorded evaluations of submitted student work.'
+        }
+        count={loading ? undefined : grades.length}
+        countLabel="graded"
+        action={
+          canManageGrades && (
+            <Button onClick={() => (showForm ? closeForm() : setShowForm(true))} variant={showForm ? 'outline' : 'default'}>
+              {showForm ? 'Close' : 'Add grade'}
+            </Button>
+          )
+        }
+      />
 
-      {/* Summary Cards */}
+      {error && <RecordError error={error} />}
+
       {grades.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <span className="text-xs font-semibold text-gray-500 uppercase">Graded Items</span>
-            <div className="text-2xl font-bold text-gray-900 mt-1">{grades.length}</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <span className="text-xs font-semibold text-gray-500 uppercase">Average Score</span>
-            <div className={`text-2xl font-bold mt-1 ${
-              averagePercentage >= 80 ? 'text-green-600' :
-              averagePercentage >= 70 ? 'text-yellow-600' :
-              'text-red-600'
-            }`}>
-              {averagePercentage}%
-            </div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <span className="text-xs font-semibold text-gray-500 uppercase">Average Standing</span>
-            <div className="text-2xl font-bold text-indigo-600 mt-1">
-              {averagePercentage >= 90 ? 'A (Excellent)' :
-               averagePercentage >= 80 ? 'B (Good)' :
-               averagePercentage >= 70 ? 'C (Satisfactory)' :
-               averagePercentage >= 60 ? 'D (Needs Work)' : 'F'}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error.message}
-        </div>
+        <CounterBand>
+          <Counter
+            label="Graded items"
+            value={grades.length}
+            isLoading={loading}
+            className="border-b border-rule sm:border-b-0 sm:border-r"
+          />
+          <Counter
+            label="Average score"
+            text={`${averagePercentage}%`}
+            tone={averagePercentage >= 80 ? 'ink' : averagePercentage >= 70 ? 'signal' : 'alert'}
+            isLoading={loading}
+            className="border-b border-rule sm:border-b-0 sm:border-r"
+          />
+          <Counter
+            label="Average standing"
+            text={standing.letter}
+            note={standing.note}
+            isLoading={loading}
+          />
+        </CounterBand>
       )}
 
       {showForm && (
-        <div className="bg-white p-6 rounded-lg shadow-md border mb-6">
-          <h2 className="text-xl font-semibold mb-4">
-            {editingId ? 'Edit Grade' : 'Add Grade'}
-          </h2>
+        <RecordPanel
+          eyebrow={editingId ? 'Amend entry' : 'New entry'}
+          title={editingId ? 'Edit grade' : 'Record a grade'}
+        >
           <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Submission
-                </label>
+            <div className="grid grid-cols-1 gap-x-10 md:grid-cols-2">
+              <Field index={1} label="Submission" htmlFor="grade-submission">
                 <select
+                  id="grade-submission"
                   value={formData.submission_id}
-                  onChange={(e) => setFormData({...formData, submission_id: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, submission_id: e.target.value })}
                   required
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="field field-select"
                 >
                   <option value="">Select a submission</option>
                   {submissions.map(submission => (
@@ -197,35 +219,33 @@ export default function GradesPage() {
                     </option>
                   ))}
                 </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Points Earned
-                </label>
+              </Field>
+
+              <Field index={2} label="Points earned" htmlFor="grade-points">
                 <input
+                  id="grade-points"
                   type="number"
                   value={formData.points_earned}
-                  onChange={(e) => setFormData({...formData, points_earned: parseInt(e.target.value) || 0})}
+                  onChange={(e) => setFormData({ ...formData, points_earned: parseInt(e.target.value) || 0 })}
                   required
                   min="0"
                   max={formData.submission_id ? getAssignmentPoints(formData.submission_id) : undefined}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="field"
                 />
                 {formData.submission_id && (
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="micro mt-3">
                     Out of {getAssignmentPoints(formData.submission_id)} points
                   </p>
                 )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Graded By
-                </label>
+              </Field>
+
+              <Field index={3} label="Graded by" htmlFor="grade-teacher">
                 <select
+                  id="grade-teacher"
                   value={formData.graded_by}
-                  onChange={(e) => setFormData({...formData, graded_by: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, graded_by: e.target.value })}
                   required
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="field field-select"
                 >
                   <option value="">Select a teacher</option>
                   {teachers.map(teacher => (
@@ -234,135 +254,93 @@ export default function GradesPage() {
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Feedback
-                </label>
+              </Field>
+
+              <Field index={4} label="Feedback" htmlFor="grade-feedback" className="md:col-span-2">
                 <textarea
+                  id="grade-feedback"
                   value={formData.feedback || ''}
-                  onChange={(e) => setFormData({...formData, feedback: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, feedback: e.target.value })}
                   rows={4}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter feedback for the student..."
+                  className="field field-box"
+                  placeholder="Enter feedback for the student…"
                 />
-              </div>
+              </Field>
             </div>
-            <div className="flex gap-2 mt-4">
-              <Button type="submit">
-                {editingId ? 'Update' : 'Add'} Grade
-              </Button>
-              <Button 
-                type="button" 
-                onClick={() => {
-                  setShowForm(false);
-                  setEditingId(null);
-                  resetForm();
-                }}
-                variant="outline"
+
+            <div className="mt-8 flex gap-3 border-t border-rule pt-6">
+              <Button
+                type="submit"
+                disabled={createGradeMutation.isPending || updateGradeMutation.isPending}
               >
+                {editingId ? 'Update grade' : 'Record grade'}
+              </Button>
+              <Button type="button" onClick={closeForm} variant="outline">
                 Cancel
               </Button>
             </div>
           </form>
-        </div>
+        </RecordPanel>
       )}
 
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Assignment & Student
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Score
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Percentage
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Graded By
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Graded At
-              </th>
-              {canManageGrades && (
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {grades.map((grade: Grade) => {
-              const maxPoints = getAssignmentPoints(grade.submission_id);
-              const percentage = calculatePercentage(grade.points_earned, maxPoints);
-              
-              return (
-                <tr key={grade.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {getSubmissionInfo(grade.submission_id)}
-                    </div>
-                    {grade.feedback && (
-                      <div className="text-sm text-gray-500 truncate max-w-xs">
-                        Feedback: {grade.feedback}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {grade.points_earned} / {maxPoints}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      percentage >= 90 ? 'bg-green-100 text-green-800' :
-                      percentage >= 80 ? 'bg-blue-100 text-blue-800' :
-                      percentage >= 70 ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {percentage}%
+      {loading ? (
+        <RecordLoading label="Reading the grade register" />
+      ) : grades.length === 0 ? (
+        <RecordEmpty label="No grades on record">
+          {isStudent
+            ? 'Nothing has been graded against your account yet.'
+            : 'No work has been evaluated yet. Recorded grades appear here.'}
+        </RecordEmpty>
+      ) : (
+        <RecordTable
+          columns={[
+            { label: 'Assignment & student', className: 'w-[30%]' },
+            { label: 'Score', className: 'w-[10%]' },
+            { label: 'Percentage', className: 'w-[16%]' },
+            { label: 'Graded by', className: 'w-[16%]' },
+            { label: 'Graded at', className: 'w-[16%]' },
+            ...(canManageGrades ? [{ label: null, className: 'w-[12%]' }] : []),
+          ]}
+        >
+          {grades.map((grade: Grade, i) => {
+            const maxPoints = getAssignmentPoints(grade.submission_id);
+            const percentage = calculatePercentage(grade.points_earned, maxPoints);
+
+            return (
+              <RecordRow
+                key={grade.id}
+                index={i}
+                isPending={
+                  deleteGradeMutation.isPending && deleteGradeMutation.variables === grade.id
+                }
+              >
+                <Cell tone="primary" title={grade.feedback || undefined}>
+                  {getSubmissionInfo(grade.submission_id)}
+                  {grade.feedback && (
+                    <span className="mt-1 block truncate text-[0.8125rem] font-normal tracking-normal text-muted-foreground">
+                      {grade.feedback}
                     </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">
-                      {getTeacherName(grade.graded_by)}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">
-                      {formatDateTime(grade.graded_at)}
-                    </div>
-                  </td>
-                  {canManageGrades && (
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => handleEdit(grade)}
-                        className="text-indigo-600 hover:text-indigo-900 mr-4"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(grade.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
-                      </button>
-                    </td>
                   )}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        {grades.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            {isStudent ? 'No grades recorded yet.' : 'No grades found. Add your first grade!'}
-          </div>
-        )}
-      </div>
+                </Cell>
+                <Cell tone="numeral" className="whitespace-nowrap">
+                  {grade.points_earned}/{maxPoints}
+                </Cell>
+                <Cell className="overflow-visible">
+                  <ScoreBar percentage={percentage} />
+                </Cell>
+                <Cell>{getTeacherName(grade.graded_by)}</Cell>
+                <Cell tone="numeral">{formatDateTime(grade.graded_at)}</Cell>
+                {canManageGrades && (
+                  <RecordActions
+                    onEdit={() => handleEdit(grade)}
+                    onDelete={() => handleDelete(grade.id)}
+                  />
+                )}
+              </RecordRow>
+            );
+          })}
+        </RecordTable>
+      )}
     </div>
   );
 }

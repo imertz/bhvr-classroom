@@ -1,7 +1,19 @@
 import { Link } from 'react-router-dom';
 import { useTeachers, useDeleteTeacher } from '../hooks/queries';
 import { Button } from '../components/ui/button';
+import {
+  Cell,
+  RecordActions,
+  RecordEmpty,
+  RecordError,
+  RecordHeader,
+  RecordLink,
+  RecordLoading,
+  RecordRow,
+  RecordTable,
+} from '../components/ui/record';
 import { usePermissions } from '../hooks/usePermissions';
+import { formatDate } from '../lib/utils';
 import type { Teacher } from 'shared/dist';
 
 export default function TeachersPage() {
@@ -15,101 +27,78 @@ export default function TeachersPage() {
     }
   };
 
-  if (loading) {
-    return <div className="max-w-4xl mx-auto p-6">Loading teachers...</div>;
-  }
-
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Teachers</h1>
-        {canViewAdmin && (
-          <Button asChild>
-            <Link to="/teachers/new">Add Teacher</Link>
-          </Button>
-        )}
-      </div>
+    <div>
+      <RecordHeader
+        eyebrow="TCHR · Register"
+        title="Teachers"
+        count={loading ? undefined : teachers.length}
+        countLabel="on record"
+        action={
+          canViewAdmin && (
+            <Button asChild>
+              <Link to="/teachers/new">Add teacher</Link>
+            </Button>
+          )
+        }
+      />
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error instanceof Error ? error.message : 'An error occurred'}
-        </div>
-      )}
+      {error && <RecordError error={error} />}
 
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Name
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Email
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Created
-              </th>
+      {loading ? (
+        <RecordLoading label="Reading staff records" />
+      ) : teachers.length === 0 ? (
+        <RecordEmpty label="No teachers on record">
+          {canViewAdmin ? (
+            <>
+              The register is empty.{' '}
+              <RecordLink to="/teachers/new">Add the first teacher</RecordLink>.
+            </>
+          ) : isAuthenticated ? (
+            <>Contact an administrator to add teachers.</>
+          ) : (
+            <>
+              <RecordLink to="/login">Sign in</RecordLink> to manage teachers.
+            </>
+          )}
+        </RecordEmpty>
+      ) : (
+        <RecordTable
+          columns={[
+            { label: 'Name', className: 'w-[26%]' },
+            { label: 'Email', className: 'w-[34%]' },
+            { label: 'Created', className: 'w-[18%]' },
+            ...(canViewAdmin ? [{ label: null, className: 'w-[14%]' }] : []),
+          ]}
+        >
+          {teachers.map((teacher: Teacher, i) => (
+            <RecordRow
+              key={teacher.id}
+              index={i}
+              isPending={
+                deleteTeacherMutation.isPending &&
+                deleteTeacherMutation.variables === teacher.id
+              }
+            >
+              <Cell tone="primary">
+                {teacher.first_name} {teacher.last_name}
+              </Cell>
+              <Cell tone="code" title={teacher.email}>
+                {teacher.email}
+              </Cell>
+              <Cell tone="numeral">{formatDate(teacher.created_at)}</Cell>
               {canViewAdmin && (
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                <RecordActions
+                  editTo={`/teachers/${teacher.id}/edit`}
+                  onDelete={() => handleDelete(teacher.id)}
+                  canEdit={canViewAdmin}
+                  canDelete={canViewAdmin}
+                />
               )}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {teachers.map((teacher: Teacher) => (
-              <tr key={teacher.id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">
-                    {teacher.first_name} {teacher.last_name}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500">{teacher.email}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500">
-                    {new Date(teacher.created_at).toLocaleDateString()}
-                  </div>
-                </td>
-                {canViewAdmin && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <Link 
-                      to={`/teachers/${teacher.id}/edit`}
-                      className="text-indigo-600 hover:text-indigo-900 mr-4"
-                    >
-                      Edit
-                    </Link>
-                    <button
-                      onClick={() => handleDelete(teacher.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        
-        {teachers.length === 0 && !loading && (
-          <div className="text-center py-8 text-gray-500">
-            No teachers found.{' '}
-            {canViewAdmin ? (
-              <Link to="/teachers/new" className="text-indigo-600 hover:text-indigo-900">
-                Add the first teacher
-              </Link>
-            ) : isAuthenticated ? (
-              <span>Contact an administrator to add teachers.</span>
-            ) : (
-              <Link to="/login" className="text-indigo-600 hover:text-indigo-900">
-                Login to manage teachers
-              </Link>
-            )}
-          </div>
-        )}
-      </div>
+            </RecordRow>
+          ))}
+        </RecordTable>
+      )}
     </div>
   );
 }

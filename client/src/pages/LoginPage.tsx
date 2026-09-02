@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { Navigate, useNavigate, Link } from "react-router-dom";
 import { useAuthStore } from "../stores/authStore";
-import { Button } from "../components/ui/button";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -44,49 +43,112 @@ export default function LoginPage() {
     }
   };
 
+  const disabled = isLoading || !email || !password;
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign In
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Sign in to your classroom management account
+    <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[5fr_7fr]">
+      {/* ================= PLATE — inked panel ================= */}
+      <aside className="relative flex flex-col justify-between overflow-hidden bg-foreground px-8 py-10 text-background lg:px-12 lg:py-14">
+        <div
+          className="pointer-events-none absolute inset-y-0 right-0 hidden w-3/5 opacity-[0.14] lg:block"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(to right, currentColor 0, currentColor 1px, transparent 1px, transparent 25%)",
+          }}
+          aria-hidden="true"
+        />
+
+        <div className="anim-rise relative flex items-center gap-3">
+          <span className="block size-3 shrink-0 bg-signal" aria-hidden="true" />
+          <span className="font-mono text-[0.6875rem] font-semibold uppercase leading-none tracking-[0.2em]">
+            Classroom
+          </span>
+        </div>
+
+        <div className="relative my-14 lg:my-0">
+          <h1 className="display anim-wipe lag-1 max-w-[8ch] text-[clamp(2.75rem,7vw,4.75rem)]">
+            Access the record.
+          </h1>
+          <p className="anim-rise lag-3 mt-7 max-w-sm text-[0.9375rem] leading-[1.7] text-background/55">
+            Classes, enrolment, attendance and grades — held as one continuous
+            record and released only to the account it belongs to.
           </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm space-y-4">
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Enter your email"
-                disabled={isLoading}
-              />
-            </div>
+        <dl className="anim-rise lag-4 relative grid grid-cols-2 gap-px border-t border-background/15 pt-6 text-background/55 sm:grid-cols-3">
+          <div className="flex flex-col gap-2">
+            <dt className="micro text-background/40">Session</dt>
+            <dd className="index-numeral text-[0.6875rem]">15 MIN · REFRESHED</dd>
+          </div>
+          <div className="flex flex-col gap-2">
+            <dt className="micro text-background/40">Roles</dt>
+            <dd className="index-numeral text-[0.6875rem]">ADMIN · STAFF · STDN</dd>
+          </div>
+          <div className="hidden flex-col gap-2 sm:flex">
+            <dt className="micro text-background/40">Access</dt>
+            <dd className="index-numeral text-[0.6875rem]">ROLE SCOPED</dd>
+          </div>
+        </dl>
+      </aside>
 
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Password
-              </label>
-              <div className="mt-1 relative">
+      {/* ================= FORM ================= */}
+      <main className="flex items-center justify-center bg-background px-6 py-14 sm:px-10 lg:px-16">
+        <div className="w-full max-w-[26rem]">
+          <div className="anim-rise flex items-center gap-5">
+            <span className="micro micro-signal shrink-0">Sign in</span>
+            <span className="anim-rule lag-1 h-px flex-1 bg-rule" />
+          </div>
+
+          <h2 className="display anim-rise lag-1 mt-7 text-[2rem]">
+            Identify yourself.
+          </h2>
+
+          <form className="mt-12" onSubmit={handleSubmit} noValidate>
+            <div className="stagger">
+              {/* --- 01 EMAIL --- */}
+              <div className="border-t border-rule py-5">
+                <label
+                  htmlFor="email"
+                  className="flex items-baseline gap-4"
+                >
+                  <span className="index-numeral text-[0.6875rem] text-muted-foreground">
+                    01
+                  </span>
+                  <span className="micro micro-ink">Email address</span>
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="field mt-3"
+                  placeholder="name@school.edu"
+                  disabled={isLoading}
+                />
+              </div>
+
+              {/* --- 02 PASSWORD --- */}
+              <div className="border-t border-rule py-5">
+                <div className="flex items-baseline justify-between gap-4">
+                  <label htmlFor="password" className="flex items-baseline gap-4">
+                    <span className="index-numeral text-[0.6875rem] text-muted-foreground">
+                      02
+                    </span>
+                    <span className="micro micro-ink">Password</span>
+                  </label>
+                  <button
+                    type="button"
+                    className="micro transition-colors duration-100 hover:text-signal disabled:opacity-40"
+                    onClick={() => setShowPassword(!showPassword)}
+                    disabled={isLoading}
+                    aria-pressed={showPassword}
+                  >
+                    {showPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
                 <input
                   id="password"
                   name="password"
@@ -95,129 +157,51 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                  placeholder="Enter your password"
+                  className="field mt-3"
+                  placeholder="••••••••"
                   disabled={isLoading}
                 />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
-                  disabled={isLoading}
-                >
-                  {showPassword ? (
-                    <svg
-                      className="h-5 w-5 text-gray-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L12 12m-2.122-2.122L7.76 7.76m0 0L5.64 5.64m0 0L12 12m-6.36-6.36L12 12"
-                      />
-                    </svg>
-                  ) : (
-                    <svg
-                      className="h-5 w-5 text-gray-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                      />
-                    </svg>
-                  )}
-                </button>
               </div>
             </div>
-          </div>
 
-          {error && (
-            <div className="rounded-md bg-red-50 p-4">
-              <div className="flex">
-                <svg
-                  className="h-5 w-5 text-red-400"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">
-                    Login Failed
-                  </h3>
-                  <div className="mt-2 text-sm text-red-700">{error}</div>
-                </div>
+            {error && (
+              <div
+                role="alert"
+                className="anim-rise mt-6 border-l-2 border-destructive bg-destructive/[0.06] px-4 py-3"
+              >
+                <span className="micro text-destructive">Authentication failed</span>
+                <p className="mt-2 text-[0.8125rem] leading-snug text-foreground">
+                  {error}
+                </p>
               </div>
-            </div>
-          )}
+            )}
 
-          <div>
-            <Button
+            <button
               type="submit"
-              disabled={isLoading || !email || !password}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={disabled}
+              className="relative mt-8 flex h-12 w-full items-center justify-center overflow-hidden bg-foreground font-mono text-[0.6875rem] font-medium uppercase tracking-[0.16em] text-background transition-colors duration-100 hover:bg-signal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-foreground"
             >
-              {isLoading ? (
-                <>
-                  <svg
-                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Signing in...
-                </>
-              ) : (
-                "Sign in"
+              {isLoading ? "Authenticating…" : "Sign in"}
+              {isLoading && (
+                <span
+                  className="anim-sweep absolute bottom-0 left-0 h-[2px] w-1/4 bg-signal"
+                  aria-hidden="true"
+                />
               )}
-            </Button>
-          </div>
+            </button>
 
-          <div className="text-center">
-            <span className="text-sm text-gray-600">
-              Don't have an account?{" "}
+            <div className="mt-8 flex items-baseline justify-between gap-4 border-t border-rule pt-5">
+              <span className="micro">No account?</span>
               <Link
                 to="/register"
-                className="font-medium text-blue-600 hover:text-blue-500"
+                className="micro micro-signal underline decoration-1 underline-offset-4 transition-colors duration-100 hover:text-foreground"
               >
-                Register as a Teacher
+                Register as staff →
               </Link>
-            </span>
-          </div>
-        </form>
-      </div>
+            </div>
+          </form>
+        </div>
+      </main>
     </div>
   );
 }

@@ -2,6 +2,13 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTeacher, useCreateTeacher, useUpdateTeacher } from '../hooks/queries';
 import { Button } from '../components/ui/button';
+import {
+  Field,
+  FormSheet,
+  RecordError,
+  RecordHeader,
+  RecordLoading,
+} from '../components/ui/record';
 import type { TeacherInput } from 'shared/dist';
 
 export default function TeacherFormPage() {
@@ -84,97 +91,89 @@ export default function TeacherFormPage() {
     updateFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  if (loading && isEditing) {
-    return <div className="max-w-2xl mx-auto p-6">Loading teacher...</div>;
-  }
-
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">
-        {isEditing ? 'Edit Teacher' : 'Add New Teacher'}
-      </h1>
+    <div>
+      <RecordHeader
+        eyebrow={isEditing ? 'TCHR · Amend record' : 'TCHR · New record'}
+        title={isEditing ? 'Edit Teacher' : 'Add Teacher'}
+        countLabel="fields"
+        count={4}
+      />
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error.message}
-        </div>
+      {error && <RecordError error={error} />}
+
+      {loading && isEditing ? (
+        <RecordLoading label="Reading staff record" />
+      ) : (
+        <FormSheet>
+          <form onSubmit={handleSubmit}>
+            <Field index={1} label="Email" htmlFor="email">
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                required
+                className="field"
+                placeholder="name@school.edu"
+              />
+            </Field>
+
+            <Field index={2} label="First name" htmlFor="first_name">
+              <input
+                type="text"
+                id="first_name"
+                name="first_name"
+                value={formData.first_name}
+                onChange={handleInputChange}
+                required
+                className="field"
+              />
+            </Field>
+
+            <Field index={3} label="Last name" htmlFor="last_name">
+              <input
+                type="text"
+                id="last_name"
+                name="last_name"
+                value={formData.last_name}
+                onChange={handleInputChange}
+                required
+                className="field"
+              />
+            </Field>
+
+            <Field
+              index={4}
+              label="Password"
+              htmlFor="password"
+              optional={isEditing}
+              hint={isEditing ? 'Leave blank to keep the current password.' : 'Minimum 8 characters.'}
+            >
+              <input
+                type="password"
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleInputChange}
+                required={!isEditing}
+                minLength={8}
+                className="field"
+              />
+            </Field>
+
+            <div className="mt-10 flex gap-3 border-t border-rule pt-6">
+              <Button type="submit" disabled={loading}>
+                {loading ? 'Saving…' : isEditing ? 'Update teacher' : 'Create teacher'}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => navigate('/teachers')}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </FormSheet>
       )}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-            Email *
-          </label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            value={formData.email}
-            onChange={handleInputChange}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="first_name" className="block text-sm font-medium text-gray-700 mb-2">
-            First Name *
-          </label>
-          <input
-            type="text"
-            id="first_name"
-            name="first_name"
-            value={formData.first_name}
-            onChange={handleInputChange}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="last_name" className="block text-sm font-medium text-gray-700 mb-2">
-            Last Name *
-          </label>
-          <input
-            type="text"
-            id="last_name"
-            name="last_name"
-            value={formData.last_name}
-            onChange={handleInputChange}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-            Password {isEditing ? '(leave blank to keep current)' : '*'}
-          </label>
-          <input
-            type="password"
-            id="password"
-            name="password"
-            value={formData.password}
-            onChange={handleInputChange}
-            required={!isEditing}
-            minLength={8}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
-
-        <div className="flex gap-4">
-          <Button type="submit" disabled={loading}>
-            {loading ? 'Saving...' : (isEditing ? 'Update Teacher' : 'Create Teacher')}
-          </Button>
-          <Button 
-            type="button" 
-            variant="secondary" 
-            onClick={() => navigate('/teachers')}
-          >
-            Cancel
-          </Button>
-        </div>
-      </form>
     </div>
   );
 }

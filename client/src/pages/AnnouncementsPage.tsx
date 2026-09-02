@@ -1,13 +1,24 @@
 import { useState } from 'react';
-import { 
-  useAnnouncements, 
-  useClasses, 
-  useTeachers, 
-  useCreateAnnouncement, 
-  useUpdateAnnouncement, 
-  useDeleteAnnouncement 
+import {
+  useAnnouncements,
+  useClasses,
+  useTeachers,
+  useCreateAnnouncement,
+  useUpdateAnnouncement,
+  useDeleteAnnouncement
 } from '../hooks/queries';
 import { Button } from '../components/ui/button';
+import {
+  Field,
+  Marker,
+  RecordEmpty,
+  RecordError,
+  RecordHeader,
+  RecordLoading,
+  RecordPanel,
+} from '../components/ui/record';
+import { ordinal } from '@/lib/navigation';
+import { cn } from '@/lib/utils';
 import type { Announcement, AnnouncementInput } from 'shared/dist';
 
 export default function AnnouncementsPage() {
@@ -74,6 +85,12 @@ export default function AnnouncementsPage() {
     }
   };
 
+  const closeForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    resetForm();
+  };
+
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString();
   };
@@ -93,41 +110,36 @@ export default function AnnouncementsPage() {
     return new Date(expiresAt) < new Date();
   };
 
-  if (loading) {
-    return <div className="max-w-6xl mx-auto p-6">Loading announcements...</div>;
-  }
-
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Announcements</h1>
-        <Button onClick={() => setShowForm(true)}>
-          Create Announcement
-        </Button>
-      </div>
+    <div>
+      <RecordHeader
+        eyebrow="ANNC · Bulletin"
+        title="Announcements"
+        count={loading ? undefined : announcements.length}
+        countLabel="posted"
+        action={
+          <Button onClick={() => (showForm ? closeForm() : setShowForm(true))} variant={showForm ? 'outline' : 'default'}>
+            {showForm ? 'Close' : 'Post announcement'}
+          </Button>
+        }
+      />
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error.message}
-        </div>
-      )}
+      {error && <RecordError error={error} />}
 
       {showForm && (
-        <div className="bg-white p-6 rounded-lg shadow-md border mb-6">
-          <h2 className="text-xl font-semibold mb-4">
-            {editingId ? 'Edit Announcement' : 'Create Announcement'}
-          </h2>
+        <RecordPanel
+          eyebrow={editingId ? 'Amend notice' : 'New notice'}
+          title={editingId ? 'Edit announcement' : 'Post an announcement'}
+        >
           <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Class
-                </label>
+            <div className="grid grid-cols-1 gap-x-10 md:grid-cols-2">
+              <Field index={1} label="Class" htmlFor="announcement-class">
                 <select
+                  id="announcement-class"
                   value={formData.class_id}
-                  onChange={(e) => setFormData({...formData, class_id: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
                   required
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="field field-select"
                 >
                   <option value="">Select a class</option>
                   {classes.map(cls => (
@@ -136,16 +148,15 @@ export default function AnnouncementsPage() {
                     </option>
                   ))}
                 </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Teacher
-                </label>
+              </Field>
+
+              <Field index={2} label="Teacher" htmlFor="announcement-teacher">
                 <select
+                  id="announcement-teacher"
                   value={formData.teacher_id}
-                  onChange={(e) => setFormData({...formData, teacher_id: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, teacher_id: e.target.value })}
                   required
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="field field-select"
                 >
                   <option value="">Select a teacher</option>
                   {teachers.map(teacher => (
@@ -154,115 +165,135 @@ export default function AnnouncementsPage() {
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Title
-                </label>
+              </Field>
+
+              <Field index={3} label="Title" htmlFor="announcement-title" className="md:col-span-2">
                 <input
+                  id="announcement-title"
                   type="text"
                   value={formData.title}
-                  onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   required
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="field"
+                  placeholder="Field trip on Friday"
                 />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Content
-                </label>
+              </Field>
+
+              <Field index={4} label="Content" htmlFor="announcement-content" className="md:col-span-2">
                 <textarea
+                  id="announcement-content"
                   value={formData.content}
-                  onChange={(e) => setFormData({...formData, content: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                   required
                   rows={4}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="field field-box"
                 />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Expiration Date (Optional)
-                </label>
+              </Field>
+
+              <Field
+                index={5}
+                label="Expires (optional)"
+                htmlFor="announcement-expires"
+                className="md:col-span-2"
+              >
                 <input
+                  id="announcement-expires"
                   type="datetime-local"
                   value={formData.expires_at || ''}
-                  onChange={(e) => setFormData({...formData, expires_at: e.target.value || null})}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => setFormData({ ...formData, expires_at: e.target.value || null })}
+                  className="field"
                 />
-              </div>
+              </Field>
             </div>
-            <div className="flex gap-2 mt-4">
-              <Button type="submit">
-                {editingId ? 'Update' : 'Create'} Announcement
-              </Button>
-              <Button 
-                type="button" 
-                onClick={() => {
-                  setShowForm(false);
-                  setEditingId(null);
-                  resetForm();
-                }}
-                variant="outline"
+
+            <div className="mt-8 flex gap-3 border-t border-rule pt-6">
+              <Button
+                type="submit"
+                disabled={createAnnouncementMutation.isPending || updateAnnouncementMutation.isPending}
               >
+                {editingId ? 'Update announcement' : 'Post announcement'}
+              </Button>
+              <Button type="button" onClick={closeForm} variant="outline">
                 Cancel
               </Button>
             </div>
           </form>
-        </div>
+        </RecordPanel>
       )}
 
-      <div className="grid gap-4">
-        {announcements.map((announcement: Announcement) => (
-          <div key={announcement.id} className={`bg-white p-6 rounded-lg shadow-md border ${
-            isExpired(announcement.expires_at) ? 'opacity-60' : ''
-          }`}>
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900">
-                  {announcement.title}
-                  {isExpired(announcement.expires_at) && (
-                    <span className="ml-2 text-sm text-red-500">(Expired)</span>
+      {loading ? (
+        <RecordLoading label="Reading the bulletin" />
+      ) : announcements.length === 0 ? (
+        <RecordEmpty label="Bulletin empty">
+          Nothing has been posted yet. The first announcement will appear here.
+        </RecordEmpty>
+      ) : (
+        <div className="stagger">
+          {announcements.map((announcement: Announcement, i) => {
+            const expired = isExpired(announcement.expires_at);
+            const pending =
+              deleteAnnouncementMutation.isPending &&
+              deleteAnnouncementMutation.variables === announcement.id;
+
+            return (
+              <article
+                key={announcement.id}
+                className={cn(
+                  'group grid gap-x-8 gap-y-5 border-b border-rule px-6 py-9 transition-colors duration-100 hover:bg-muted/40 sm:px-8 lg:grid-cols-[3rem_1fr_7rem] lg:px-12',
+                  expired && 'opacity-55',
+                  pending && 'pointer-events-none opacity-30'
+                )}
+              >
+                <span className="index-numeral text-[0.6875rem] text-muted-foreground transition-colors duration-100 group-hover:text-signal">
+                  {ordinal(i + 1)}
+                </span>
+
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <span className="micro micro-signal">{getClassName(announcement.class_id)}</span>
+                    <span className="micro">{getTeacherName(announcement.teacher_id)}</span>
+                    <span className="index-numeral text-[0.6875rem] text-muted-foreground">
+                      {formatDateTime(announcement.created_at)}
+                    </span>
+                    {expired && <Marker tone="alert">Expired</Marker>}
+                  </div>
+
+                  <h2 className="mt-4 text-[1.375rem] font-semibold tracking-[-0.03em]">
+                    {announcement.title}
+                  </h2>
+
+                  <p className="mt-3 max-w-2xl whitespace-pre-wrap text-[0.9375rem] leading-[1.7] text-foreground/80">
+                    {announcement.content}
+                  </p>
+
+                  {announcement.expires_at && (
+                    <p className="micro mt-6">
+                      Expires {formatDateTime(announcement.expires_at)}
+                    </p>
                   )}
-                </h3>
-                <div className="text-sm text-gray-500 mt-1">
-                  <span>{getClassName(announcement.class_id)}</span>
-                  <span className="mx-2">•</span>
-                  <span>by {getTeacherName(announcement.teacher_id)}</span>
-                  <span className="mx-2">•</span>
-                  <span>{formatDateTime(announcement.created_at)}</span>
                 </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleEdit(announcement)}
-                  className="text-indigo-600 hover:text-indigo-900 text-sm"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(announcement.id)}
-                  className="text-red-600 hover:text-red-900 text-sm"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-            <div className="text-gray-700 whitespace-pre-wrap">
-              {announcement.content}
-            </div>
-            {announcement.expires_at && (
-              <div className="mt-4 text-sm text-gray-500">
-                Expires: {formatDateTime(announcement.expires_at)}
-              </div>
-            )}
-          </div>
-        ))}
-        {announcements.length === 0 && (
-          <div className="bg-white p-8 rounded-lg shadow-md border text-center text-gray-500">
-            No announcements found. Create your first announcement!
-          </div>
-        )}
-      </div>
+
+                <div className="flex items-start gap-4 lg:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => handleEdit(announcement)}
+                    className="micro transition-colors duration-100 hover:text-signal focus-visible:text-signal"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(announcement.id)}
+                    className="micro transition-colors duration-100 hover:text-destructive focus-visible:text-destructive"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

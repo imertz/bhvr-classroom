@@ -2,6 +2,13 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useClass, useCreateClass, useUpdateClass, useTeachers } from '../hooks/queries';
 import { Button } from '../components/ui/button';
+import {
+  Field,
+  FormSheet,
+  RecordError,
+  RecordHeader,
+  RecordLoading,
+} from '../components/ui/record';
 import type { ClassInput } from 'shared/dist';
 
 export default function ClassFormPage() {
@@ -93,127 +100,111 @@ export default function ClassFormPage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     updateFormData(prev => ({
-      ...prev, 
-      [name]: value === '' ? null : value 
+      ...prev,
+      [name]: value === '' ? null : value
     }));
   };
 
-  if (loading && isEditing) {
-    return <div className="max-w-2xl mx-auto p-6">Loading class...</div>;
-  }
-
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">
-        {isEditing ? 'Edit Class' : 'Add New Class'}
-      </h1>
+    <div>
+      <RecordHeader
+        eyebrow={isEditing ? 'CLSS · Amend record' : 'CLSS · New record'}
+        title={isEditing ? 'Edit Class' : 'Add Class'}
+        countLabel="fields"
+        count={5}
+      />
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error.message}
-        </div>
+      {error && <RecordError error={error} />}
+
+      {loading && isEditing ? (
+        <RecordLoading label="Reading class record" />
+      ) : (
+        <FormSheet>
+          <form onSubmit={handleSubmit}>
+            <Field index={1} label="Class name" htmlFor="name">
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                required
+                placeholder="Mathematics 101"
+                className="field"
+              />
+            </Field>
+
+            <Field index={2} label="Subject" htmlFor="subject">
+              <input
+                type="text"
+                id="subject"
+                name="subject"
+                value={formData.subject}
+                onChange={handleInputChange}
+                required
+                placeholder="Mathematics"
+                className="field"
+              />
+            </Field>
+
+            <Field index={3} label="Teacher" htmlFor="teacher_id">
+              <select
+                id="teacher_id"
+                name="teacher_id"
+                value={formData.teacher_id}
+                onChange={handleInputChange}
+                required
+                className="field field-select"
+              >
+                <option value="">Select a teacher</option>
+                {teachers.map(teacher => (
+                  <option key={teacher.id} value={teacher.id}>
+                    {teacher.first_name} {teacher.last_name} ({teacher.email})
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field index={4} label="Room number" htmlFor="room_number" optional>
+              <input
+                type="text"
+                id="room_number"
+                name="room_number"
+                value={formData.room_number || ''}
+                onChange={handleInputChange}
+                placeholder="A101"
+                className="field"
+              />
+            </Field>
+
+            <Field
+              index={5}
+              label="Schedule"
+              htmlFor="schedule"
+              optional
+              hint="e.g. Monday, Wednesday, Friday · 09:00–10:30"
+            >
+              <textarea
+                id="schedule"
+                name="schedule"
+                value={formData.schedule || ''}
+                onChange={handleInputChange}
+                rows={3}
+                className="field field-box"
+              />
+            </Field>
+
+            <div className="mt-10 flex gap-3 border-t border-rule pt-6">
+              <Button type="submit" disabled={loading}>
+                {loading ? 'Saving…' : isEditing ? 'Update class' : 'Create class'}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => navigate('/classes')}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </FormSheet>
       )}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-            Class Name *
-          </label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            value={formData.name}
-            onChange={handleInputChange}
-            required
-            placeholder="e.g., Mathematics 101, Advanced Physics"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">
-            Subject *
-          </label>
-          <input
-            type="text"
-            id="subject"
-            name="subject"
-            value={formData.subject}
-            onChange={handleInputChange}
-            required
-            placeholder="e.g., Mathematics, Physics, Chemistry"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="teacher_id" className="block text-sm font-medium text-gray-700 mb-2">
-            Teacher *
-          </label>
-          <select
-            id="teacher_id"
-            name="teacher_id"
-            value={formData.teacher_id}
-            onChange={handleInputChange}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            <option value="">Select a teacher</option>
-            {teachers.map(teacher => (
-              <option key={teacher.id} value={teacher.id}>
-                {teacher.first_name} {teacher.last_name} ({teacher.email})
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="room_number" className="block text-sm font-medium text-gray-700 mb-2">
-            Room Number
-          </label>
-          <input
-            type="text"
-            id="room_number"
-            name="room_number"
-            value={formData.room_number || ''}
-            onChange={handleInputChange}
-            placeholder="e.g., A101, Room 205, Science Lab 1"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="schedule" className="block text-sm font-medium text-gray-700 mb-2">
-            Schedule
-          </label>
-          <textarea
-            id="schedule"
-            name="schedule"
-            value={formData.schedule || ''}
-            onChange={handleInputChange}
-            rows={3}
-            placeholder="e.g., Monday, Wednesday, Friday 9:00-10:30 AM"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          />
-          <p className="text-sm text-gray-500 mt-1">
-            Enter the class schedule (optional)
-          </p>
-        </div>
-
-        <div className="flex gap-4">
-          <Button type="submit" disabled={loading}>
-            {loading ? 'Saving...' : (isEditing ? 'Update Class' : 'Create Class')}
-          </Button>
-          <Button 
-            type="button" 
-            variant="secondary" 
-            onClick={() => navigate('/classes')}
-          >
-            Cancel
-          </Button>
-        </div>
-      </form>
     </div>
   );
 }

@@ -1,7 +1,27 @@
 import { useState } from 'react';
 import { useAssignments, useClasses, useCreateAssignment, useDeleteAssignment } from '../hooks/queries';
 import { Button } from '../components/ui/button';
+import {
+  Cell,
+  Field,
+  Marker,
+  RecordEmpty,
+  RecordError,
+  RecordHeader,
+  RecordLoading,
+  RecordPanel,
+  RecordRow,
+  RecordTable,
+} from '../components/ui/record';
 import type { Assignment, AssignmentInput } from 'shared/dist';
+
+/** Assignment types read as stamps; the graded ones carry more weight. */
+const TYPE_TONE = {
+  homework: 'mute',
+  quiz: 'signal',
+  test: 'ink',
+  project: 'signal',
+} satisfies Record<string, 'mute' | 'signal' | 'ink'>;
 
 export default function AssignmentsPage() {
   const { data: assignments = [], isLoading: loadingAssignments, error: assignmentsError } = useAssignments();
@@ -51,39 +71,33 @@ export default function AssignmentsPage() {
     return classInfo ? `${classInfo.name} (${classInfo.subject})` : 'Unknown Class';
   };
 
-  if (loading) {
-    return <div className="max-w-6xl mx-auto p-6">Loading assignments...</div>;
-  }
-
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Assignments</h1>
-        <Button onClick={() => setShowForm(true)}>
-          Add Assignment
-        </Button>
-      </div>
+    <div>
+      <RecordHeader
+        eyebrow="ASGN · Register"
+        title="Assignments"
+        count={loading ? undefined : assignments.length}
+        countLabel="set"
+        action={
+          <Button onClick={() => setShowForm(!showForm)} variant={showForm ? 'outline' : 'default'}>
+            {showForm ? 'Close' : 'Add assignment'}
+          </Button>
+        }
+      />
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error.message}
-        </div>
-      )}
+      {error && <RecordError error={error} />}
 
       {showForm && (
-        <div className="bg-white p-6 rounded-lg shadow-md border mb-6">
-          <h2 className="text-xl font-semibold mb-4">Create New Assignment</h2>
+        <RecordPanel eyebrow="New entry" title="Create an assignment">
           <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Class
-                </label>
+            <div className="grid grid-cols-1 gap-x-10 md:grid-cols-2">
+              <Field index={1} label="Class" htmlFor="assignment-class">
                 <select
+                  id="assignment-class"
                   value={formData.class_id}
-                  onChange={(e) => setFormData({...formData, class_id: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
                   required
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="field field-select"
                 >
                   <option value="">Select a class</option>
                   {classes.map(cls => (
@@ -92,163 +106,139 @@ export default function AssignmentsPage() {
                     </option>
                   ))}
                 </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Title
-                </label>
+              </Field>
+
+              <Field index={2} label="Title" htmlFor="assignment-title">
                 <input
+                  id="assignment-title"
                   type="text"
                   value={formData.title}
-                  onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   required
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="field"
+                  placeholder="Chapter 4 problem set"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Type
-                </label>
+              </Field>
+
+              <Field index={3} label="Type" htmlFor="assignment-type">
                 <select
+                  id="assignment-type"
                   value={formData.type}
                   onChange={(e) => {
                     const type = e.target.value;
                     if (type === 'homework' || type === 'quiz' || type === 'test' || type === 'project') {
-                      setFormData({...formData, type});
+                      setFormData({ ...formData, type });
                     }
                   }}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="field field-select"
                 >
                   <option value="homework">Homework</option>
                   <option value="quiz">Quiz</option>
                   <option value="test">Test</option>
                   <option value="project">Project</option>
                 </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Points Possible
-                </label>
+              </Field>
+
+              <Field index={4} label="Points possible" htmlFor="assignment-points">
                 <input
+                  id="assignment-points"
                   type="number"
                   value={formData.points_possible}
-                  onChange={(e) => setFormData({...formData, points_possible: parseInt(e.target.value)})}
+                  onChange={(e) => setFormData({ ...formData, points_possible: parseInt(e.target.value) })}
                   required
                   min="1"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="field"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Due Date
-                </label>
+              </Field>
+
+              <Field index={5} label="Due date" htmlFor="assignment-due">
                 <input
+                  id="assignment-due"
                   type="datetime-local"
                   value={formData.due_date}
-                  onChange={(e) => setFormData({...formData, due_date: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
                   required
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="field"
                 />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description
-                </label>
+              </Field>
+
+              <Field index={6} label="Description" htmlFor="assignment-description" className="md:col-span-2">
                 <textarea
+                  id="assignment-description"
                   value={formData.description || ''}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={3}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="field field-box"
+                  placeholder="Optional notes for students"
                 />
-              </div>
+              </Field>
             </div>
-            <div className="flex gap-2 mt-4">
-              <Button type="submit">Create Assignment</Button>
-              <Button 
-                type="button" 
-                onClick={() => setShowForm(false)}
-                variant="outline"
-              >
+
+            <div className="mt-8 flex gap-3 border-t border-rule pt-6">
+              <Button type="submit" disabled={createAssignmentMutation.isPending}>
+                {createAssignmentMutation.isPending ? 'Creating…' : 'Create assignment'}
+              </Button>
+              <Button type="button" onClick={() => setShowForm(false)} variant="outline">
                 Cancel
               </Button>
             </div>
           </form>
-        </div>
+        </RecordPanel>
       )}
 
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Title
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Class
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Type
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Points
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Due Date
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {assignments.map((assignment: Assignment) => (
-              <tr key={assignment.id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">
-                    {assignment.title}
-                  </div>
-                  {assignment.description && (
-                    <div className="text-sm text-gray-500 truncate max-w-xs">
-                      {assignment.description}
-                    </div>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500">
-                    {getClassInfo(assignment.class_id)}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                    {assignment.type}
+      {loading ? (
+        <RecordLoading label="Reading assignment records" />
+      ) : assignments.length === 0 ? (
+        <RecordEmpty label="No assignments set">
+          Nothing has been assigned yet. Create the first entry to open the register.
+        </RecordEmpty>
+      ) : (
+        <RecordTable
+          columns={[
+            { label: 'Title', className: 'w-[26%]' },
+            { label: 'Class', className: 'w-[22%]' },
+            { label: 'Type', className: 'w-[12%]' },
+            { label: 'Points', className: 'w-[8%]' },
+            { label: 'Due', className: 'w-[18%]' },
+            { label: null, className: 'w-[10%]' },
+          ]}
+        >
+          {assignments.map((assignment: Assignment, i) => (
+            <RecordRow
+              key={assignment.id}
+              index={i}
+              isPending={
+                deleteAssignmentMutation.isPending &&
+                deleteAssignmentMutation.variables === assignment.id
+              }
+            >
+              <Cell tone="primary" title={assignment.description || undefined}>
+                {assignment.title}
+                {assignment.description && (
+                  <span className="mt-1 block truncate text-[0.8125rem] font-normal tracking-normal text-muted-foreground">
+                    {assignment.description}
                   </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{assignment.points_possible}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500">
-                    {formatDateTime(assignment.due_date)}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button
-                    onClick={() => handleDelete(assignment.id)}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {assignments.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            No assignments found. Create your first assignment!
-          </div>
-        )}
-      </div>
+                )}
+              </Cell>
+              <Cell>{getClassInfo(assignment.class_id)}</Cell>
+              <Cell>
+                <Marker tone={TYPE_TONE[assignment.type]}>{assignment.type}</Marker>
+              </Cell>
+              <Cell tone="numeral">{assignment.points_possible}</Cell>
+              <Cell tone="numeral">{formatDateTime(assignment.due_date)}</Cell>
+              <td className="py-4 pr-6 text-right align-middle sm:pr-8 lg:pr-12">
+                <button
+                  type="button"
+                  onClick={() => handleDelete(assignment.id)}
+                  className="micro transition-colors duration-100 hover:text-destructive focus-visible:text-destructive"
+                >
+                  Delete
+                </button>
+              </td>
+            </RecordRow>
+          ))}
+        </RecordTable>
+      )}
     </div>
   );
 }

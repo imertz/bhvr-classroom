@@ -2,6 +2,13 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useStudent, useCreateStudent, useUpdateStudent } from '../hooks/queries';
 import { Button } from '../components/ui/button';
+import {
+  Field,
+  FormSheet,
+  RecordError,
+  RecordHeader,
+  RecordLoading,
+} from '../components/ui/record';
 import type { StudentInput } from 'shared/dist';
 
 export default function StudentFormPage() {
@@ -93,137 +100,126 @@ export default function StudentFormPage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     updateFormData(prev => ({
-      ...prev, 
-      [name]: type === 'number' ? parseInt(value) || 0 : value 
+      ...prev,
+      [name]: type === 'number' ? parseInt(value) || 0 : value
     }));
   };
 
-  if (loading && isEditing) {
-    return <div className="max-w-2xl mx-auto p-6">Loading student...</div>;
-  }
-
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">
-        {isEditing ? 'Edit Student' : 'Add New Student'}
-      </h1>
+    <div>
+      <RecordHeader
+        eyebrow={isEditing ? 'STDN · Amend record' : 'STDN · New record'}
+        title={isEditing ? 'Edit Student' : 'Add Student'}
+        countLabel="fields"
+        count={6}
+      />
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error.message}
-        </div>
+      {error && <RecordError error={error} />}
+
+      {loading && isEditing ? (
+        <RecordLoading label="Reading student record" />
+      ) : (
+        <FormSheet>
+          <form onSubmit={handleSubmit}>
+            <Field index={1} label="Email" htmlFor="email">
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                required
+                className="field"
+                placeholder="name@school.edu"
+              />
+            </Field>
+
+            <Field index={2} label="First name" htmlFor="first_name">
+              <input
+                type="text"
+                id="first_name"
+                name="first_name"
+                value={formData.first_name}
+                onChange={handleInputChange}
+                required
+                className="field"
+              />
+            </Field>
+
+            <Field index={3} label="Last name" htmlFor="last_name">
+              <input
+                type="text"
+                id="last_name"
+                name="last_name"
+                value={formData.last_name}
+                onChange={handleInputChange}
+                required
+                className="field"
+              />
+            </Field>
+
+            <Field index={4} label="Date of birth" htmlFor="date_of_birth">
+              <input
+                type="date"
+                id="date_of_birth"
+                name="date_of_birth"
+                value={formData.date_of_birth}
+                onChange={handleInputChange}
+                required
+                className="field"
+              />
+            </Field>
+
+            <Field index={5} label="Grade level" htmlFor="grade_level">
+              <select
+                id="grade_level"
+                name="grade_level"
+                value={formData.grade_level}
+                onChange={handleInputChange}
+                required
+                className="field field-select"
+              >
+                {Array.from({ length: 12 }, (_, i) => i + 1).map(grade => (
+                  <option key={grade} value={grade}>
+                    Grade {grade}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field
+              index={6}
+              label="Password"
+              htmlFor="password"
+              optional
+              hint={
+                isEditing
+                  ? 'Leave blank to keep the current password.'
+                  : 'Student login password — minimum 8 characters.'
+              }
+            >
+              <input
+                type="password"
+                id="password"
+                name="password"
+                value={formData.password || ''}
+                onChange={handleInputChange}
+                minLength={8}
+                className="field"
+              />
+            </Field>
+
+            <div className="mt-10 flex gap-3 border-t border-rule pt-6">
+              <Button type="submit" disabled={loading}>
+                {loading ? 'Saving…' : isEditing ? 'Update student' : 'Create student'}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => navigate('/students')}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </FormSheet>
       )}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-            Email *
-          </label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            value={formData.email}
-            onChange={handleInputChange}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="first_name" className="block text-sm font-medium text-gray-700 mb-2">
-            First Name *
-          </label>
-          <input
-            type="text"
-            id="first_name"
-            name="first_name"
-            value={formData.first_name}
-            onChange={handleInputChange}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="last_name" className="block text-sm font-medium text-gray-700 mb-2">
-            Last Name *
-          </label>
-          <input
-            type="text"
-            id="last_name"
-            name="last_name"
-            value={formData.last_name}
-            onChange={handleInputChange}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="date_of_birth" className="block text-sm font-medium text-gray-700 mb-2">
-            Date of Birth *
-          </label>
-          <input
-            type="date"
-            id="date_of_birth"
-            name="date_of_birth"
-            value={formData.date_of_birth}
-            onChange={handleInputChange}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="grade_level" className="block text-sm font-medium text-gray-700 mb-2">
-            Grade Level *
-          </label>
-          <select
-            id="grade_level"
-            name="grade_level"
-            value={formData.grade_level}
-            onChange={handleInputChange}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            {Array.from({ length: 12 }, (_, i) => i + 1).map(grade => (
-              <option key={grade} value={grade}>
-                Grade {grade}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-            Password {isEditing ? '(leave blank to keep current)' : '(optional)'}
-          </label>
-          <input
-            type="password"
-            id="password"
-            name="password"
-            value={formData.password || ''}
-            onChange={handleInputChange}
-            minLength={8}
-            placeholder={isEditing ? 'Enter new password to change' : 'Default or student login password (min 8 chars)'}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
-
-        <div className="flex gap-4">
-          <Button type="submit" disabled={loading}>
-            {loading ? 'Saving...' : (isEditing ? 'Update Student' : 'Create Student')}
-          </Button>
-          <Button 
-            type="button" 
-            variant="secondary" 
-            onClick={() => navigate('/students')}
-          >
-            Cancel
-          </Button>
-        </div>
-      </form>
     </div>
   );
 }

@@ -1,14 +1,36 @@
 import { useState } from 'react';
-import { 
-  useEnrollments, 
-  useStudents, 
-  useClasses, 
-  useCreateEnrollment, 
-  useUpdateEnrollment, 
-  useDeleteEnrollment 
+import {
+  useEnrollments,
+  useStudents,
+  useClasses,
+  useCreateEnrollment,
+  useUpdateEnrollment,
+  useDeleteEnrollment
 } from '../hooks/queries';
 import { Button } from '../components/ui/button';
+import {
+  Cell,
+  Counter,
+  CounterBand,
+  Field,
+  Marker,
+  RecordActions,
+  RecordEmpty,
+  RecordError,
+  RecordGroup,
+  RecordHeader,
+  RecordLoading,
+  RecordPanel,
+  RecordRow,
+  RecordTable,
+} from '../components/ui/record';
 import type { Enrollment, EnrollmentInput } from 'shared/dist';
+
+const STATUS_TONE = {
+  active: 'signal',
+  completed: 'ink',
+  dropped: 'alert',
+} satisfies Record<string, 'mute' | 'signal' | 'alert' | 'ink'>;
 
 export default function EnrollmentsPage() {
   const { data: enrollments = [], isLoading: loadingEnrollments, error: enrollmentsError } = useEnrollments();
@@ -68,6 +90,12 @@ export default function EnrollmentsPage() {
     }
   };
 
+  const closeForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    resetForm();
+  };
+
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString();
   };
@@ -87,15 +115,6 @@ export default function EnrollmentsPage() {
     return classInfo ? `${classInfo.name} (${classInfo.subject})` : 'Unknown Class';
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'dropped': return 'bg-red-100 text-red-800';
-      case 'completed': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   // Group enrollments by class for better organization
   const enrollmentsByClass: Record<string, Enrollment[]> = {};
   for (const enrollment of enrollments) {
@@ -106,41 +125,36 @@ export default function EnrollmentsPage() {
     enrollmentsByClass[className].push(enrollment);
   }
 
-  if (loading) {
-    return <div className="max-w-6xl mx-auto p-6">Loading enrollments...</div>;
-  }
-
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Enrollments</h1>
-        <Button onClick={() => setShowForm(true)}>
-          Add Enrollment
-        </Button>
-      </div>
+    <div>
+      <RecordHeader
+        eyebrow="ENRL · Register"
+        title="Enrollments"
+        count={loading ? undefined : enrollments.length}
+        countLabel="on record"
+        action={
+          <Button onClick={() => (showForm ? closeForm() : setShowForm(true))} variant={showForm ? 'outline' : 'default'}>
+            {showForm ? 'Close' : 'Add enrollment'}
+          </Button>
+        }
+      />
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error.message}
-        </div>
-      )}
+      {error && <RecordError error={error} />}
 
       {showForm && (
-        <div className="bg-white p-6 rounded-lg shadow-md border mb-6">
-          <h2 className="text-xl font-semibold mb-4">
-            {editingId ? 'Edit Enrollment' : 'Add Enrollment'}
-          </h2>
+        <RecordPanel
+          eyebrow={editingId ? 'Amend entry' : 'New entry'}
+          title={editingId ? 'Edit enrollment' : 'Add enrollment'}
+        >
           <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Student
-                </label>
+            <div className="grid grid-cols-1 gap-x-10 md:grid-cols-2">
+              <Field index={1} label="Student" htmlFor="enrollment-student">
                 <select
+                  id="enrollment-student"
                   value={formData.student_id}
-                  onChange={(e) => setFormData({...formData, student_id: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
                   required
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="field field-select"
                 >
                   <option value="">Select a student</option>
                   {students.map(student => (
@@ -149,16 +163,15 @@ export default function EnrollmentsPage() {
                     </option>
                   ))}
                 </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Class
-                </label>
+              </Field>
+
+              <Field index={2} label="Class" htmlFor="enrollment-class">
                 <select
+                  id="enrollment-class"
                   value={formData.class_id}
-                  onChange={(e) => setFormData({...formData, class_id: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
                   required
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="field field-select"
                 >
                   <option value="">Select a class</option>
                   {classes.map(cls => (
@@ -167,144 +180,115 @@ export default function EnrollmentsPage() {
                     </option>
                   ))}
                 </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
+              </Field>
+
+              <Field index={3} label="Status" htmlFor="enrollment-status">
                 <select
+                  id="enrollment-status"
                   value={formData.status}
                   onChange={(e) => {
                     const status = e.target.value;
                     if (status === 'active' || status === 'dropped' || status === 'completed') {
-                      setFormData({...formData, status});
+                      setFormData({ ...formData, status });
                     }
                   }}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="field field-select"
                 >
                   <option value="active">Active</option>
                   <option value="dropped">Dropped</option>
                   <option value="completed">Completed</option>
                 </select>
-              </div>
+              </Field>
             </div>
-            <div className="flex gap-2 mt-4">
-              <Button type="submit">
-                {editingId ? 'Update' : 'Add'} Enrollment
-              </Button>
-              <Button 
-                type="button" 
-                onClick={() => {
-                  setShowForm(false);
-                  setEditingId(null);
-                  resetForm();
-                }}
-                variant="outline"
+
+            <div className="mt-8 flex gap-3 border-t border-rule pt-6">
+              <Button
+                type="submit"
+                disabled={createEnrollmentMutation.isPending || updateEnrollmentMutation.isPending}
               >
+                {editingId ? 'Update enrollment' : 'Add enrollment'}
+              </Button>
+              <Button type="button" onClick={closeForm} variant="outline">
                 Cancel
               </Button>
             </div>
           </form>
-        </div>
+        </RecordPanel>
       )}
 
-      {/* Statistics Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <h3 className="text-lg font-semibold text-gray-900">Total Enrollments</h3>
-          <p className="text-3xl font-bold text-blue-600">{enrollments.length}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <h3 className="text-lg font-semibold text-gray-900">Active Students</h3>
-          <p className="text-3xl font-bold text-green-600">
-            {enrollments.filter(e => e.status === 'active').length}
-          </p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <h3 className="text-lg font-semibold text-gray-900">Classes with Students</h3>
-          <p className="text-3xl font-bold text-purple-600">
-            {Object.keys(enrollmentsByClass).length}
-          </p>
-        </div>
-      </div>
+      <CounterBand>
+        <Counter
+          label="Total enrollments"
+          value={enrollments.length}
+          isLoading={loading}
+          className="border-b border-rule sm:border-b-0 sm:border-r"
+        />
+        <Counter
+          label="Active students"
+          value={enrollments.filter(e => e.status === 'active').length}
+          isLoading={loading}
+          className="border-b border-rule sm:border-b-0 sm:border-r"
+        />
+        <Counter
+          label="Classes with students"
+          value={Object.keys(enrollmentsByClass).length}
+          isLoading={loading}
+        />
+      </CounterBand>
 
-      {/* Enrollments by Class */}
-      <div className="space-y-6">
-        {Object.entries(enrollmentsByClass).map(([className, classEnrollments]) => (
-          <div key={className} className="bg-white shadow-md rounded-lg overflow-hidden">
-            <div className="bg-gray-50 px-6 py-3 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">{className}</h3>
-              <p className="text-sm text-gray-500">{classEnrollments.length} students enrolled</p>
-            </div>
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Student
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Enrolled At
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {classEnrollments.map((enrollment: Enrollment) => (
-                  <tr key={enrollment.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {getStudentName(enrollment.student_id)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">
-                        {getStudentEmail(enrollment.student_id)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(enrollment.status)}`}>
-                        {enrollment.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">
-                        {formatDateTime(enrollment.enrolled_at)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => handleEdit(enrollment)}
-                        className="text-indigo-600 hover:text-indigo-900 mr-4"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(enrollment.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ))}
-        {enrollments.length === 0 && (
-          <div className="bg-white p-8 rounded-lg shadow-md border text-center text-gray-500">
-            No enrollments found. Add your first enrollment!
-          </div>
-        )}
-      </div>
+      {loading ? (
+        <RecordLoading label="Reading enrollment records" />
+      ) : enrollments.length === 0 ? (
+        <RecordEmpty label="No enrollments on record">
+          No student has been assigned to a class yet. Add the first enrollment to open the roster.
+        </RecordEmpty>
+      ) : (
+        Object.entries(enrollmentsByClass).map(([className, classEnrollments]) => (
+          <RecordGroup
+            key={className}
+            title={className}
+            meta={`${classEnrollments.length} enrolled`}
+          >
+            <RecordTable
+              sticky={false}
+              columns={[
+                { label: 'Student', className: 'w-[24%]' },
+                { label: 'Email', className: 'w-[28%]' },
+                { label: 'Status', className: 'w-[14%]' },
+                { label: 'Enrolled', className: 'w-[20%]' },
+                { label: null, className: 'w-[14%]' },
+              ]}
+            >
+              {classEnrollments.map((enrollment: Enrollment, i) => (
+                <RecordRow
+                  key={enrollment.id}
+                  index={i}
+                  isPending={
+                    deleteEnrollmentMutation.isPending &&
+                    deleteEnrollmentMutation.variables === enrollment.id
+                  }
+                >
+                  <Cell tone="primary">{getStudentName(enrollment.student_id)}</Cell>
+                  <Cell tone="code" title={getStudentEmail(enrollment.student_id)}>
+                    {getStudentEmail(enrollment.student_id)}
+                  </Cell>
+                  <Cell>
+                    <Marker tone={STATUS_TONE[enrollment.status]}>
+                      {enrollment.status}
+                    </Marker>
+                  </Cell>
+                  <Cell tone="numeral">{formatDateTime(enrollment.enrolled_at)}</Cell>
+                  <RecordActions
+                    onEdit={() => handleEdit(enrollment)}
+                    onDelete={() => handleDelete(enrollment.id)}
+                    deleteLabel="Remove"
+                  />
+                </RecordRow>
+              ))}
+            </RecordTable>
+          </RecordGroup>
+        ))
+      )}
     </div>
   );
 }

@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '../components/ui/button';
 import { useAuthStore } from '../stores/authStore';
+import { Field } from '../components/ui/record';
 
 export default function RegistrationPage() {
   const navigate = useNavigate();
   const { register, isLoading, error } = useAuthStore();
-  
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -52,7 +52,7 @@ export default function RegistrationPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -76,7 +76,7 @@ export default function RegistrationPage() {
       ...prev,
       [name]: value
     }));
-    
+
     // Clear validation error when user starts typing
     if (validationErrors[name]) {
       setValidationErrors(prev => ({
@@ -87,24 +87,66 @@ export default function RegistrationPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create Teacher Account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Join the classroom management system
+    <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[5fr_7fr]">
+      {/* ================= PLATE — inked panel ================= */}
+      <aside className="relative flex flex-col justify-between overflow-hidden bg-foreground px-8 py-10 text-background lg:px-12 lg:py-14">
+        <div
+          className="pointer-events-none absolute inset-y-0 right-0 hidden w-3/5 opacity-[0.14] lg:block"
+          style={{
+            backgroundImage:
+              'repeating-linear-gradient(to right, currentColor 0, currentColor 1px, transparent 1px, transparent 25%)',
+          }}
+          aria-hidden="true"
+        />
+
+        <div className="anim-rise relative flex items-center gap-3">
+          <span className="block size-3 shrink-0 bg-signal" aria-hidden="true" />
+          <span className="font-mono text-[0.6875rem] font-semibold uppercase leading-none tracking-[0.2em]">
+            Classroom
+          </span>
+        </div>
+
+        <div className="relative my-14 lg:my-0">
+          <h1 className="display anim-wipe lag-1 max-w-[9ch] text-[clamp(2.75rem,7vw,4.75rem)]">
+            Open a staff account.
+          </h1>
+          <p className="anim-rise lag-3 mt-7 max-w-sm text-[0.9375rem] leading-[1.7] text-background/55">
+            Teaching accounts can publish assignments, take the daily register
+            and return grades against the school record.
           </p>
         </div>
-        
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div className="flex space-x-4">
-              <div className="flex-1">
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-                  First Name
-                </label>
+
+        <dl className="anim-rise lag-4 relative grid grid-cols-2 gap-px border-t border-background/15 pt-6 text-background/55 sm:grid-cols-3">
+          <div className="flex flex-col gap-2">
+            <dt className="micro text-background/40">Account</dt>
+            <dd className="index-numeral text-[0.6875rem]">TEACHING STAFF</dd>
+          </div>
+          <div className="flex flex-col gap-2">
+            <dt className="micro text-background/40">Grants</dt>
+            <dd className="index-numeral text-[0.6875rem]">ASGN · ATTN · GRDS</dd>
+          </div>
+          <div className="hidden flex-col gap-2 sm:flex">
+            <dt className="micro text-background/40">Review</dt>
+            <dd className="index-numeral text-[0.6875rem]">IMMEDIATE</dd>
+          </div>
+        </dl>
+      </aside>
+
+      {/* ================= FORM ================= */}
+      <main className="flex items-center justify-center bg-background px-6 py-14 sm:px-10 lg:px-16">
+        <div className="w-full max-w-[26rem]">
+          <div className="anim-rise flex items-center gap-5">
+            <span className="micro micro-signal shrink-0">Register</span>
+            <span className="anim-rule lag-1 h-px flex-1 bg-rule" />
+          </div>
+
+          <h2 className="display anim-rise lag-1 mt-7 text-[2rem]">
+            Enter your details.
+          </h2>
+
+          <form className="mt-10" onSubmit={handleSubmit} noValidate>
+            <div className="stagger">
+              <Field index={1} label="First name" htmlFor="firstName" error={validationErrors.firstName}>
                 <input
                   id="firstName"
                   name="firstName"
@@ -112,18 +154,12 @@ export default function RegistrationPage() {
                   required
                   value={formData.firstName}
                   onChange={handleChange}
-                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                  placeholder="First Name"
+                  className="field"
+                  placeholder="Ada"
                 />
-                {validationErrors.firstName && (
-                  <p className="mt-1 text-sm text-red-600">{validationErrors.firstName}</p>
-                )}
-              </div>
-              
-              <div className="flex-1">
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-                  Last Name
-                </label>
+              </Field>
+
+              <Field index={2} label="Last name" htmlFor="lastName" error={validationErrors.lastName}>
                 <input
                   id="lastName"
                   name="lastName"
@@ -131,112 +167,101 @@ export default function RegistrationPage() {
                   required
                   value={formData.lastName}
                   onChange={handleChange}
-                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                  placeholder="Last Name"
+                  className="field"
+                  placeholder="Lovelace"
                 />
-                {validationErrors.lastName && (
-                  <p className="mt-1 text-sm text-red-600">{validationErrors.lastName}</p>
-                )}
+              </Field>
+
+              <Field index={3} label="Email address" htmlFor="email" error={validationErrors.email}>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="field"
+                  placeholder="name@school.edu"
+                />
+              </Field>
+
+              <Field
+                index={4}
+                label="Password"
+                htmlFor="password"
+                hint="Minimum 6 characters."
+                error={validationErrors.password}
+              >
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="field"
+                  placeholder="••••••••"
+                />
+              </Field>
+
+              <Field
+                index={5}
+                label="Confirm password"
+                htmlFor="confirmPassword"
+                error={validationErrors.confirmPassword}
+              >
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="field"
+                  placeholder="••••••••"
+                />
+              </Field>
+            </div>
+
+            {error && (
+              <div
+                role="alert"
+                className="anim-rise mt-6 border-l-2 border-destructive bg-destructive/[0.06] px-4 py-3"
+              >
+                <span className="micro text-destructive">Registration failed</span>
+                <p className="mt-2 text-[0.8125rem] leading-snug text-foreground">{error}</p>
               </div>
-            </div>
+            )}
 
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email Address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={formData.email}
-                onChange={handleChange}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
-              />
-              {validationErrors.email && (
-                <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
-              />
-              {validationErrors.password && (
-                <p className="mt-1 text-sm text-red-600">{validationErrors.password}</p>
-              )}
-              <p className="mt-1 text-xs text-gray-500">
-                Password must be at least 6 characters long
-              </p>
-            </div>
-
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                Confirm Password
-              </label>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Confirm Password"
-              />
-              {validationErrors.confirmPassword && (
-                <p className="mt-1 text-sm text-red-600">{validationErrors.confirmPassword}</p>
-              )}
-            </div>
-          </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
-
-          <div>
-            <Button
+            <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+              className="relative mt-8 flex h-12 w-full items-center justify-center overflow-hidden bg-foreground font-mono text-[0.6875rem] font-medium uppercase tracking-[0.16em] text-background transition-colors duration-100 hover:bg-signal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-foreground"
             >
-              {isLoading ? (
-                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              ) : (
-                'Create Account'
+              {isLoading ? 'Creating account…' : 'Create account'}
+              {isLoading && (
+                <span
+                  className="anim-sweep absolute bottom-0 left-0 h-[2px] w-1/4 bg-signal"
+                  aria-hidden="true"
+                />
               )}
-            </Button>
-          </div>
+            </button>
 
-          <div className="text-center">
-            <span className="text-sm text-gray-600">
-              Already have an account?{' '}
-              <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
-                Sign in here
+            <div className="mt-8 flex items-baseline justify-between gap-4 border-t border-rule pt-5">
+              <span className="micro">Already registered?</span>
+              <Link
+                to="/login"
+                className="micro micro-signal underline decoration-1 underline-offset-4 transition-colors duration-100 hover:text-foreground"
+              >
+                Sign in →
               </Link>
-            </span>
-          </div>
-        </form>
-      </div>
+            </div>
+          </form>
+        </div>
+      </main>
     </div>
   );
 }

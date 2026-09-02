@@ -2,27 +2,17 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
 import { useAuthStore } from '../stores/authStore';
 import { usePermissions } from '../hooks/usePermissions';
+import { getNavItems, isActivePath, ordinal } from '@/lib/navigation';
+import { cn } from '@/lib/utils';
 
 export default function Navigation() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, isLoading } = useAuthStore();
-  const { isAuthenticated, isAdmin, isTeacher, isStudent } = usePermissions();
+  const permissions = usePermissions();
+  const { isAuthenticated } = permissions;
 
-  const allNavItems = [
-    { path: '/', label: 'Home', show: true },
-    { path: '/teachers', label: 'Teachers', show: isAdmin },
-    { path: '/students', label: 'Students', show: isAdmin || isTeacher },
-    { path: '/classes', label: isStudent ? 'My Classes' : 'Classes', show: true },
-    { path: '/assignments', label: isStudent ? 'My Assignments' : 'Assignments', show: true },
-    { path: '/announcements', label: 'Announcements', show: true },
-    { path: '/submissions', label: isStudent ? 'My Submissions' : 'Submissions', show: true },
-    { path: '/enrollments', label: 'Enrollments', show: isAdmin || isTeacher },
-    { path: '/attendance', label: isStudent ? 'My Attendance' : 'Attendance', show: true },
-    { path: '/grades', label: isStudent ? 'My Grades' : 'Grades', show: true },
-  ];
-
-  const navItems = allNavItems.filter(item => item.show);
+  const navItems = getNavItems(permissions);
 
   const handleLogout = async () => {
     try {
@@ -35,77 +25,124 @@ export default function Navigation() {
     }
   };
 
-  return (
-    <nav className="bg-white shadow-lg border-b">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex justify-between items-center h-16">
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="text-xl font-bold text-indigo-600">
-              📚 Classroom Manager
-            </div>
-          </Link>
-          
-          <div className="flex items-center space-x-4">
-            <div className="flex space-x-2 overflow-x-auto">
-              {navItems.map((item) => (
-                <Button
-                  key={item.path}
-                  asChild
-                  variant={location.pathname === item.path ? "default" : "ghost"}
-                  size="sm"
-                  className="whitespace-nowrap"
-                >
-                  <Link to={item.path}>{item.label}</Link>
-                </Button>
-              ))}
-            </div>
+  const identity = user
+    ? [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email
+    : null;
 
-            {/* User Info and Auth Actions */}
-            <div className="flex items-center space-x-3 border-l pl-4">
-              {isAuthenticated ? (
-                <>
-                  {user && (
-                    <div className="text-sm text-gray-700">
-                      <span className="font-medium">
-                        {user.email}
-                      </span>
-                      <span className="block text-xs text-gray-500 capitalize">
-                        {user.role}
-                      </span>
-                    </div>
+  return (
+    <>
+      {/* ---------- Desktop rail ---------- */}
+      <aside className="hidden lg:flex sticky top-14 h-[calc(100vh-3.5rem)] w-60 shrink-0 flex-col border-r border-rule">
+        <nav className="flex-1 overflow-y-auto py-3" aria-label="Modules">
+          {navItems.map((item, i) => {
+            const active = isActivePath(location.pathname, item.path);
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'group relative flex items-baseline gap-3 py-2.5 pl-6 pr-4 transition-colors duration-100',
+                  active ? 'bg-signal-tint' : 'hover:bg-muted'
+                )}
+              >
+                {/* Active marker: a solid signal bar flush to the rail edge */}
+                <span
+                  className={cn(
+                    'absolute left-0 top-0 h-full w-[3px] transition-transform duration-150 origin-top',
+                    active ? 'bg-signal scale-y-100' : 'bg-foreground scale-y-0 group-hover:scale-y-100'
                   )}
-                  
-                  <Button
-                    onClick={handleLogout}
-                    disabled={isLoading}
-                    variant="outline"
-                    size="sm"
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    {isLoading ? (
-                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                    ) : (
-                      'Logout'
-                    )}
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  asChild
-                  variant="default"
-                  size="sm"
-                  className="bg-indigo-600 hover:bg-indigo-700"
+                />
+                <span
+                  className={cn(
+                    'index-numeral w-5 text-[0.625rem] tabular-nums',
+                    active ? 'text-signal' : 'text-muted-foreground'
+                  )}
                 >
-                  <Link to="/login">Login</Link>
-                </Button>
-              )}
+                  {ordinal(i + 1)}
+                </span>
+                <span className="flex flex-col gap-0.5">
+                  <span
+                    className={cn(
+                      'micro',
+                      active ? 'micro-signal' : 'text-foreground/80 group-hover:text-foreground'
+                    )}
+                  >
+                    {item.code}
+                  </span>
+                  <span
+                    className={cn(
+                      'text-[0.8125rem] leading-none tracking-[-0.01em]',
+                      active ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'
+                    )}
+                  >
+                    {item.label}
+                  </span>
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* ---------- Identity block, anchored to the foot of the rail ---------- */}
+        <div className="border-t border-rule p-5">
+          {isAuthenticated && user ? (
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <span className="micro micro-signal">{user.role}</span>
+                <span className="truncate text-[0.8125rem] leading-tight text-foreground" title={identity ?? undefined}>
+                  {identity}
+                </span>
+                <span className="truncate font-mono text-[0.6875rem] leading-tight text-muted-foreground" title={user.email}>
+                  {user.email}
+                </span>
+              </div>
+              <Button onClick={handleLogout} disabled={isLoading} variant="outline" size="sm">
+                {isLoading ? 'Ending…' : 'End session'}
+              </Button>
             </div>
-          </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <span className="micro">No session</span>
+              <Button asChild size="sm">
+                <Link to="/login">Sign in</Link>
+              </Button>
+            </div>
+          )}
         </div>
-      </div>
-    </nav>
+      </aside>
+
+      {/* ---------- Mobile strip: the rail, laid on its side ---------- */}
+      <nav
+        className="lg:hidden sticky top-14 z-30 flex items-stretch gap-0 overflow-x-auto border-b border-rule bg-background"
+        aria-label="Modules"
+      >
+        {navItems.map((item, i) => {
+          const active = isActivePath(location.pathname, item.path);
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              aria-current={active ? 'page' : undefined}
+              className={cn(
+                'relative flex shrink-0 flex-col gap-1 border-r border-rule px-4 py-2.5',
+                active ? 'bg-signal-tint' : ''
+              )}
+            >
+              <span
+                className={cn(
+                  'index-numeral text-[0.5625rem]',
+                  active ? 'text-signal' : 'text-muted-foreground'
+                )}
+              >
+                {ordinal(i + 1)}
+              </span>
+              <span className={cn('micro', active ? 'micro-signal' : 'micro-ink')}>{item.code}</span>
+              {active && <span className="absolute inset-x-0 bottom-0 h-[2px] bg-signal" />}
+            </Link>
+          );
+        })}
+      </nav>
+    </>
   );
 }

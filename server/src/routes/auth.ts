@@ -14,7 +14,7 @@ import { StudentRepo } from '../services/StudentRepo'
 import { AuthRepo } from '../services/AuthRepo'
 import { AuthService } from '../services/AuthService'
 import { AUTH_CONFIG } from '../config/auth'
-import { authMiddleware } from '../middleware/auth'
+import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth'
 
 export const authRoutes = new Hono<{ Variables: AuthVariables }>()
   // Unified login (auto-detects teacher vs student)
@@ -263,6 +263,8 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
         user = {
           id: teacher.id,
           email: teacher.email,
+          firstName: teacher.first_name,
+          lastName: teacher.last_name,
           role: teacher.role || 'teacher',
           userType: 'teacher'
         }
@@ -272,8 +274,11 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
         user = {
           id: student.id,
           email: student.email,
+          firstName: student.first_name,
+          lastName: student.last_name,
           role: 'student',
-          userType: 'student'
+          userType: 'student',
+          gradeLevel: student.grade_level
         }
       }
 
@@ -284,10 +289,12 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
     try {
       const result = await appRuntime.runPromise(program)
       if (!result) {
+        deleteCookie(c, 'refresh_token', AUTH_CONFIG.COOKIE_OPTIONS)
         return c.json({ error: 'Invalid refresh token' }, 401)
       }
       return c.json(result)
     } catch {
+      deleteCookie(c, 'refresh_token', AUTH_CONFIG.COOKIE_OPTIONS)
       return c.json({ error: 'Invalid refresh token' }, 401)
     }
   })
@@ -408,7 +415,7 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
   })
 
   // Logout
-  .post('/logout', authMiddleware, async (c) => {
+  .post('/logout', optionalAuthMiddleware, async (c) => {
     const refreshToken = getCookie(c, 'refresh_token')
 
     if (refreshToken) {
@@ -422,6 +429,6 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
       await appRuntime.runPromise(program.pipe(Effect.catch(() => Effect.void)))
     }
 
-    deleteCookie(c, 'refresh_token')
+    deleteCookie(c, 'refresh_token', AUTH_CONFIG.COOKIE_OPTIONS)
     return c.json({ message: 'Logged out successfully' })
   })

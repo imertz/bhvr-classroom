@@ -120,42 +120,47 @@ export const useAuthStore = create<AuthState>()(
 
       checkAuth: async () => {
         const { accessToken, isAuthenticated } = get();
-        
-        // If we think we're authenticated but have no access token, clear auth state
-        if (isAuthenticated && !accessToken) {
-          get().clearAuth();
-          return;
+
+        // 1. If we have an active access token, verify it
+        if (accessToken) {
+          set({ isLoading: true, error: null });
+          try {
+            const data = await authService.getCurrentUser();
+            set({
+              user: data.user,
+              isAuthenticated: true,
+              isLoading: false,
+            });
+            return;
+          } catch {
+            // Access token might be expired, fall through to refresh
+          }
         }
 
-        if (!accessToken) {
-          // Try to refresh token if we don't have an access token
+        // 2. If the user is marked authenticated (e.g. persisted state after page reload),
+        // try to refresh the access token using the httpOnly cookie
+        if (isAuthenticated) {
+          set({ isLoading: true, error: null });
           try {
             await get().refreshAccessToken();
           } catch {
+            // Refresh token is expired or invalid, clear auth state
             get().clearAuth();
+          } finally {
+            set({ isLoading: false });
           }
           return;
         }
 
-        set({ isLoading: true, error: null });
-        try {
-          const data = await authService.getCurrentUser();
-          set({
-            user: data.user,
-            isAuthenticated: true,
-            isLoading: false,
-          });
-        } catch (error) {
-          console.error('Auth check error:', error);
-          get().clearAuth();
-        }
+        // 3. Unauthenticated guest visitor
+        set({ isLoading: false });
       },
 
       refreshAccessToken: async () => {
         try {
           const data = await authService.refreshToken();
 
-          // Calculate new token expiration
+          // Calculate new token expiration (15 minutes from now)
           const expiresAt = Date.now() + (15 * 60 * 1000);
 
           set({
@@ -170,7 +175,6 @@ export const useAuthStore = create<AuthState>()(
           // Restart the refresh timer with the new token
           get().startTokenRefreshTimer();
         } catch (error) {
-          console.error('Token refresh error:', error);
           get().clearAuth();
           throw error;
         }
