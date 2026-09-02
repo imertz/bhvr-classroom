@@ -67,11 +67,11 @@ export default function StudentsPage() {
       ) : (
         <RecordTable
           columns={[
-            { label: 'Name', className: 'w-[22%]' },
-            { label: 'Email', className: 'w-[30%]' },
-            { label: 'Grade', className: 'w-[10%]' },
-            { label: 'Date of birth', className: 'w-[16%]' },
-            ...(showActions ? [{ label: null, className: 'w-[14%]' }] : []),
+            { label: 'Name', width: 22 },
+            { label: 'Email', width: 30 },
+            { label: 'Grade', width: 10 },
+            { label: 'Date of birth', width: 16 },
+            ...(showActions ? [{ label: null, width: 14 }] : []),
           ]}
         >
           {students.map((student: Student, i) => (

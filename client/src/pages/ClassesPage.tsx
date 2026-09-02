@@ -66,11 +66,11 @@ export default function ClassesPage() {
       ) : (
         <RecordTable
           columns={[
-            { label: 'Name', className: 'w-[20%]' },
-            { label: 'Subject', className: 'w-[16%]' },
-            { label: 'Teacher ID', className: 'w-[32%]' },
-            { label: 'Room', className: 'w-[12%]' },
-            ...(showActions ? [{ label: null, className: 'w-[14%]' }] : []),
+            { label: 'Name', width: 20 },
+            { label: 'Subject', width: 16 },
+            { label: 'Teacher ID', width: 32 },
+            { label: 'Room', width: 12 },
+            ...(showActions ? [{ label: null, width: 14 }] : []),
           ]}
         >
           {classes.map((classItem: Class, i) => (

@@ -292,12 +292,12 @@ export default function AttendancePage() {
       ) : (
         <RecordTable
           columns={[
-            { label: 'Student', className: 'w-[22%]' },
-            { label: 'Class', className: 'w-[18%]' },
-            { label: 'Date', className: 'w-[14%]' },
-            { label: 'Status', className: 'w-[14%]' },
-            { label: 'Notes', className: 'w-[20%]' },
-            ...(canManageAttendance ? [{ label: null, className: 'w-[12%]' }] : []),
+            { label: 'Student', width: 22 },
+            { label: 'Class', width: 18 },
+            { label: 'Date', width: 14 },
+            { label: 'Status', width: 14 },
+            { label: 'Notes', width: 20 },
+            ...(canManageAttendance ? [{ label: null, width: 12 }] : []),
           ]}
         >
           {attendances.map((attendance: Attendance, i) => (

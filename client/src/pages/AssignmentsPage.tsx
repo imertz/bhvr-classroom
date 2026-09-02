@@ -195,12 +195,12 @@ export default function AssignmentsPage() {
       ) : (
         <RecordTable
           columns={[
-            { label: 'Title', className: 'w-[26%]' },
-            { label: 'Class', className: 'w-[22%]' },
-            { label: 'Type', className: 'w-[12%]' },
-            { label: 'Points', className: 'w-[8%]' },
-            { label: 'Due', className: 'w-[18%]' },
-            { label: null, className: 'w-[10%]' },
+            { label: 'Title', width: 26 },
+            { label: 'Class', width: 22 },
+            { label: 'Type', width: 12 },
+            { label: 'Points', width: 8 },
+            { label: 'Due', width: 18 },
+            { label: null, width: 10 },
           ]}
         >
           {assignments.map((assignment: Assignment, i) => (

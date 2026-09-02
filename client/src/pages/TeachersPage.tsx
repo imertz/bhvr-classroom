@@ -65,10 +65,10 @@ export default function TeachersPage() {
       ) : (
         <RecordTable
           columns={[
-            { label: 'Name', className: 'w-[26%]' },
-            { label: 'Email', className: 'w-[34%]' },
-            { label: 'Created', className: 'w-[18%]' },
-            ...(canViewAdmin ? [{ label: null, className: 'w-[14%]' }] : []),
+            { label: 'Name', width: 26 },
+            { label: 'Email', width: 34 },
+            { label: 'Created', width: 18 },
+            ...(canViewAdmin ? [{ label: null, width: 14 }] : []),
           ]}
         >
           {teachers.map((teacher: Teacher, i) => (

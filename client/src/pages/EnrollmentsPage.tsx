@@ -252,11 +252,11 @@ export default function EnrollmentsPage() {
             <RecordTable
               sticky={false}
               columns={[
-                { label: 'Student', className: 'w-[24%]' },
-                { label: 'Email', className: 'w-[28%]' },
-                { label: 'Status', className: 'w-[14%]' },
-                { label: 'Enrolled', className: 'w-[20%]' },
-                { label: null, className: 'w-[14%]' },
+                { label: 'Student', width: 24 },
+                { label: 'Email', width: 28 },
+                { label: 'Status', width: 14 },
+                { label: 'Enrolled', width: 20 },
+                { label: null, width: 14 },
               ]}
             >
               {classEnrollments.map((enrollment: Enrollment, i) => (

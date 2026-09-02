@@ -55,33 +55,88 @@ export function RecordHeader({
 }
 
 /** Horizontal scroll frame — wide ledgers scroll rather than squeeze. */
+/**
+ * Width of the register column holding the row ordinals. It carries the page
+ * gutter as its left padding, so the gutter has to be *added* to the space the
+ * digits need — sizing it at a bare 3.5rem left a zero-width content box at
+ * `lg`, where `pl-12` + `pr-2` already consume 3.5rem on their own.
+ */
+const REGISTER_WIDTH = "calc(var(--record-gutter, 3rem) + 2.75rem)"
+
+export interface RecordColumn {
+  /** Column head. `null` renders an unlabelled cell (e.g. actions). */
+  label: string | null
+  /**
+   * Relative width. Weights are normalised against their own total, so they
+   * need not add up to anything in particular — 22/18/14 splits the same as
+   * 44/36/28. Defaults to 1 (an equal share).
+   */
+  width?: number
+  className?: string
+}
+
 export function RecordTable({
   columns,
   children,
   className,
   sticky = true,
 }: {
-  /** Column heads, in order. `null` renders an unlabelled cell (e.g. actions). */
-  columns: { label: string | null; className?: string }[]
+  columns: RecordColumn[]
   children: ReactNode
   className?: string
   /** Grouped ledgers stack several tables, so only ungrouped heads stick. */
   sticky?: boolean
 }) {
+  /**
+   * Widths are resolved here rather than per page. Under `table-fixed` a fixed
+   * register column competes with percentage columns for the same 100%, so any
+   * page whose percentages reached 100 squeezed the ordinals down to a sliver.
+   * Normalising the weights against the space left over makes that unreachable.
+   */
+  const totalWeight = columns.reduce((sum, column) => sum + (column.width ?? 1), 0)
+  const share = (column: RecordColumn) =>
+    `calc((100% - ${REGISTER_WIDTH}) * ${(column.width ?? 1) / totalWeight})`
+
+  /**
+   * Sticky and the opaque ground both belong on the cells, not the row: a `tr`
+   * paints no background beneath a sticky descendant in the collapsed-border
+   * model. The strong bottom rule is an inset shadow for the same reason — a
+   * collapsed border detaches from the cell once it is stuck.
+   *
+   * Sticky only engages at `xl`, where the scroll wrapper below is inert. An
+   * `overflow-x-auto` ancestor is a scroll container in BOTH axes (a `visible`
+   * axis computes to `auto` when the other is not `visible`), so a sticky head
+   * inside one resolves against that wrapper instead of the viewport — parking
+   * itself 56px below the table's own top, permanently over the first row.
+   */
+  const headCell = cn(
+    "bg-background shadow-[inset_0_-1px_0_0_var(--foreground)]",
+    sticky && "xl:sticky xl:top-14 xl:z-20"
+  )
+
+  // The wrapper scrolls horizontally only below `xl`. At `xl` and up the content
+  // column is at least 1040px against the table's 832px floor, so the table fits
+  // unwrapped — which is what lets the sticky head resolve against the viewport.
   return (
-    <div className="overflow-x-auto">
-      <table className={cn("w-full min-w-[52rem] table-fixed border-collapse", className)}>
+    <div className="max-xl:overflow-x-auto">
+      <table
+        className={cn(
+          "record-table w-full min-w-[52rem] table-fixed border-collapse",
+          className
+        )}
+      >
+        <colgroup>
+          <col style={{ width: REGISTER_WIDTH }} />
+          {columns.map((column, i) => (
+            <col key={column.label ?? `col-${i}`} style={{ width: share(column) }} />
+          ))}
+        </colgroup>
         <thead>
-          <tr
-            className={cn(
-              "border-b border-foreground bg-background",
-              sticky && "lg:sticky lg:top-14"
-            )}
-          >
+          <tr>
             {/* Register column — the row ordinals live here */}
             <th
               scope="col"
-              className={cn("w-14 py-3.5 pl-6 pr-2 text-left sm:pl-8 lg:pl-12", "micro")}
+              className={cn("micro py-3.5 pl-6 pr-2 text-left sm:pl-8 lg:pl-12", headCell)}
             >
               <span className="sr-only">Row</span>
             </th>
@@ -91,6 +146,7 @@ export function RecordTable({
                 scope="col"
                 className={cn(
                   "micro micro-ink py-3.5 pr-6 text-left align-bottom last:pr-6 sm:last:pr-8 lg:last:pr-12",
+                  headCell,
                   column.className
                 )}
               >
@@ -122,7 +178,7 @@ export function RecordRow({
         isPending && "pointer-events-none opacity-35"
       )}
     >
-      <td className="relative w-14 py-4 pl-6 pr-2 align-middle sm:pl-8 lg:pl-12">
+      <td className="relative py-4 pl-6 pr-2 align-middle sm:pl-8 lg:pl-12">
         {/* Flush-left signal bar, drawn only on hover */}
         <span
           className="absolute left-0 top-0 h-full w-[3px] origin-top scale-y-0 bg-signal transition-transform duration-150 group-hover:scale-y-100"

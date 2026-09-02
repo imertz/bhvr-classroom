@@ -289,6 +289,26 @@
      STRUCTURAL MATERIALS
      ========================================================================== */
 
+  /*
+   * The ledger's left gutter, shared by the page bands and the table's register
+   * column. The register column carries this gutter as padding, so its width is
+   * derived from it (see REGISTER_WIDTH) — hence a variable rather than a
+   * literal in three places.
+   */
+  .record-table {
+    --record-gutter: 1.5rem;
+  }
+  @media (min-width: 40rem) {
+    .record-table {
+      --record-gutter: 2rem;
+    }
+  }
+  @media (min-width: 64rem) {
+    .record-table {
+      --record-gutter: 3rem;
+    }
+  }
+
   /* Faint vertical column guides — the grid, made visible. */
   .grid-guides {
     background-image: repeating-linear-gradient(

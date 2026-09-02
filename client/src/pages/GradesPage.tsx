@@ -294,12 +294,12 @@ export default function GradesPage() {
       ) : (
         <RecordTable
           columns={[
-            { label: 'Assignment & student', className: 'w-[30%]' },
-            { label: 'Score', className: 'w-[10%]' },
-            { label: 'Percentage', className: 'w-[16%]' },
-            { label: 'Graded by', className: 'w-[16%]' },
-            { label: 'Graded at', className: 'w-[16%]' },
-            ...(canManageGrades ? [{ label: null, className: 'w-[12%]' }] : []),
+            { label: 'Assignment & student', width: 30 },
+            { label: 'Score', width: 10 },
+            { label: 'Percentage', width: 16 },
+            { label: 'Graded by', width: 16 },
+            { label: 'Graded at', width: 16 },
+            ...(canManageGrades ? [{ label: null, width: 12 }] : []),
           ]}
         >
           {grades.map((grade: Grade, i) => {

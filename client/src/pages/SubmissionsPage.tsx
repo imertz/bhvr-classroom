@@ -228,12 +228,12 @@ export default function SubmissionsPage() {
       ) : (
         <RecordTable
           columns={[
-            { label: 'Assignment', className: 'w-[22%]' },
-            { label: 'Student', className: 'w-[18%]' },
-            { label: 'Status', className: 'w-[14%]' },
-            { label: 'Submitted', className: 'w-[18%]' },
-            { label: 'Content', className: 'w-[18%]' },
-            { label: null, className: 'w-[14%]' },
+            { label: 'Assignment', width: 22 },
+            { label: 'Student', width: 18 },
+            { label: 'Status', width: 14 },
+            { label: 'Submitted', width: 18 },
+            { label: 'Content', width: 18 },
+            { label: null, width: 14 },
           ]}
         >
           {submissions.map((submission: Submission, i) => {
