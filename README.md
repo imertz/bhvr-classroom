@@ -1,72 +1,120 @@
 # 📚 Classroom Management System
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.7.3-blue)
-![React](https://img.shields.io/badge/React-19-blue)
-![Bun](https://img.shields.io/badge/Bun-latest-black)
+![Bun](https://img.shields.io/badge/Bun-1.4+-black?logo=bun)
+![TypeScript](https://img.shields.io/badge/TypeScript-7.0%20%7C%206.0-blue?logo=typescript)
+![Effect](https://img.shields.io/badge/Effect-4.0-purple)
+![Hono](https://img.shields.io/badge/Hono-4.13-E36002?logo=hono)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)
+![Tailwind](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?logo=tailwindcss)
 
-A comprehensive full-stack classroom management system built with modern TypeScript technologies, featuring complete CRUD operations for all educational entities.
+A comprehensive, production-grade full-stack classroom management system built with modern TypeScript, Bun, Hono, React 19, and the Effect TS library. Designed as a type-safe monorepo featuring end-to-end schema validation, functional service layers, role-based access control, and complete CRUD operations across all educational entities.
 
 ![Dashboard Preview](https://github.com/user-attachments/assets/a29de6b0-d4a8-4380-a921-8a07c1778ff8)
 
-## 🌟 Features
+---
 
-This classroom management system provides a complete solution for educational institutions to manage teachers, students, classes, assignments, announcements, submissions, enrollments, attendance, and grades. Built as a type-safe monorepo with shared types between client and server.
+## 🌟 Key Highlights
 
-### Core Modules
+- **Functional Architecture with Effect**: Domain repositories and business logic are modeled as typed Effect services (`Context.Service`, `Layer`, and `ManagedRuntime`) with typed error channels (`NotFoundError`, `DatabaseError`, `UnauthorizedError`) and safe resource management.
+- **End-to-End Type Safety**: Shared Effect schemas (`Schema.Class`, `Schema.TaggedError`) unify runtime validation between SQLite, Hono RPC endpoints, and the React frontend.
+- **Hono RPC Client Integration**: Fully typed API client (`hc`) with custom fetch interceptors that queue requests during automatic JWT token refreshes, seamlessly decoding responses via Effect Schema.
+- **Robust Role-Based Access Control (RBAC)**: Enforced across both API routes and client interfaces for three distinct roles: `admin`, `teacher`, and `student`.
+- **JWT Authentication with Token Rotation**: Short-lived access tokens (15 minutes) paired with cryptographically hashed, rotatable refresh tokens stored in SQLite with HTTP-only cookie support.
+- **Observability & Sensitive Data Redaction**: Structured JSON logging in production (colorized in development) featuring request-id tracing (`X-Request-Id`) and automatic redaction of sensitive credentials (passwords, tokens, cookies).
+- **Modern React 19 Frontend**: Built with Vite 8, Tailwind CSS v4, TanStack React Query v5 for caching and optimistic updates, Zustand for auth state, Lucide icons, and accessible Radix UI primitives.
+- **Custom Linting & Anti-Slop**: Enforces code quality with dual Oxlint AST plugins (`anti-slop` and `anti-slop-effect`) prohibiting unsafe type widening and ensuring strict Effect service conventions.
 
-- **👨‍🏫 Teachers**: Manage teacher profiles, departments, and contact information
-- **👨‍🎓 Students**: Handle student registration, profiles, and academic records
-- **🏛️ Classes**: Create and manage class schedules, subjects, and room assignments
-- **📝 Assignments**: Create assignments with due dates, point values, and detailed descriptions
-- **📢 Announcements**: Broadcast important information to classes with expiration dates
-- **📤 Submissions**: Track student assignment submissions with status monitoring
-- **📋 Enrollments**: Manage student enrollments in classes with status tracking
-- **📅 Attendance**: Record and track student attendance with multiple status options
-- **🎯 Grades**: Comprehensive grading system with feedback and automatic calculations
-
-### Technical Features
-
-- **Full-Stack TypeScript**: End-to-end type safety between client and server
-- **Shared Types**: Common type definitions ensure consistency across the entire application
-- **JWT Authentication**: Secure authentication with refresh token rotation
-- **Role-Based Access Control**: Admin, Teacher, and Student roles
-- **Monorepo Structure**: Organized workspaces for easy development and deployment
-- **Modern Stack**: Built with the latest technologies for performance and developer experience
-- **RESTful API**: Well-structured API endpoints for all CRUD operations
-- **Responsive UI**: Modern React interface that works on all devices
-- **Real-time Updates**: Optimistic updates and automatic data refresh
+---
 
 ## 🛠️ Tech Stack
 
-### Backend
-
-- [Bun](https://bun.sh) - Fast JavaScript runtime and package manager
-- [Hono](https://hono.dev) - Lightweight and fast web framework
-- [SQLite](https://sqlite.org) - Embedded database for data persistence
-- [Zod](https://zod.dev) - TypeScript-first schema validation
+### Backend & Core
+- **Runtime & Package Manager**: [Bun](https://bun.sh) (native SQLite driver, `Bun.password` Argon2id/bcrypt hashing, UUIDv7 generation)
+- **Web Framework**: [Hono v4](https://hono.dev) (lightweight, modular router, CORS, request IDs, RPC support)
+- **Functional Framework**: [Effect TS v4](https://effect.website) (`Context`, `Layer`, `ManagedRuntime`, `Schema`, `TaggedError`)
+- **Database**: [SQLite](https://sqlite.org) (`bun:sqlite` with WAL mode enabled and strict foreign key enforcement)
+- **Validation**: [Effect Schema](https://effect.website/docs/schema/introduction) & [Zod](https://zod.dev)
 
 ### Frontend
+- **Framework**: [React 19](https://react.dev)
+- **Build Tool**: [Vite 8](https://vitejs.dev)
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com) via `@tailwindcss/vite`
+- **Server State**: [TanStack React Query v5](https://tanstack.com/query/latest)
+- **Client State**: [Zustand v5](https://zustand.surge.sh)
+- **Routing**: [React Router v7](https://reactrouter.com)
+- **UI Components**: [Radix UI](https://radix-ui.com) & [Lucide React](https://lucide.dev)
 
-- [React 19](https://react.dev) - Modern React with latest features
-- [Vite](https://vitejs.dev) - Fast build tool and development server
-- [TypeScript](https://typescriptlang.org) - Type-safe development
-- [Tailwind CSS](https://tailwindcss.com) - Utility-first CSS framework
-- [Zustand](https://zustand.surge.sh) - Lightweight state management
-- [React Router](https://reactrouter.com) - Client-side routing
-- [Radix UI](https://radix-ui.com) - Accessible component primitives
+### Tooling & Quality
+- **TypeScript**: Dual compiler setup — `@typescript/native` (TypeScript 7) for builds and `@typescript/typescript6` for ESLint compatibility
+- **Linters**: [Oxlint](https://oxc.rs) with custom AST anti-slop rules + [ESLint](https://eslint.org)
 
-## 📋 Prerequisites
+---
 
-- [Bun](https://bun.sh) installed on your system
-- Node.js (for the client development)
-- Basic knowledge of TypeScript and React
+## 📦 Core Domain Modules
 
-### TypeScript 7 compatibility
+| Module | Description | Access Rules |
+| :--- | :--- | :--- |
+| **👨‍🏫 Teachers** | Profiles, department data, and teacher/admin accounts. | Public read; Admin write |
+| **👨‍🎓 Students** | Registration, academic profiles, grade levels, and login accounts. | Public read; Admin & Teacher write |
+| **🏛️ Classes** | Class schedules, subjects, room assignments, and detailed aggregates. | Public read; Admin & Teacher write |
+| **📋 Enrollments** | Student enrollment status (`active`, `dropped`, `completed`). | Authenticated read; Admin & Teacher write |
+| **📝 Assignments** | Coursework, quizzes, tests, points possible, and deadlines. | Public read; Admin & Teacher write |
+| **📤 Submissions** | Student assignment submissions with status tracking (`submitted`, `graded`, `returned`). | Authenticated read/write; Students can only submit for themselves |
+| **🎯 Grades** | Point grading, submission assessment, and teacher feedback. | Authenticated read; Admin & Teacher write; Students view own grades |
+| **📅 Attendance** | Daily tracking (`present`, `absent`, `tardy`, `excused`) with notes. | Authenticated read; Admin & Teacher write; Students view own attendance |
+| **📢 Announcements** | Class-wide updates and time-sensitive broadcast notices with expiration dates. | Public read; Admin & Teacher write |
 
-The repository uses TypeScript 7 for builds through the `@typescript/native` alias. `typescript-eslint` still requires the TypeScript 6 compiler API, so the `typescript` dependency intentionally points to `@typescript/typescript6`; this keeps TypeScript 7's `tsc` and ESLint's compatible API installed side by side.
+---
 
-## 🚀 Quick Start
+## 📁 Project Structure
+
+```
+.
+├── client/                     # React 19 single-page application
+│   ├── src/
+│   │   ├── components/         # UI layout, ProtectedRoute, RecordTable system
+│   │   ├── hooks/
+│   │   │   ├── queries/        # TanStack Query hooks (useTeachers, useClasses, etc.)
+│   │   │   └── usePermissions  # Role-based UI permission helpers
+│   │   ├── lib/                # Hono RPC client (`hc`), JWT refresh interceptor, unwrapJsonEffect
+│   │   ├── pages/              # Views: Dashboard, ClassDetails, Form pages, Entity tables, Auth
+│   │   ├── services/           # Client authentication services
+│   │   └── stores/             # Zustand stores (authStore)
+│   ├── public/                 # Static assets
+│   └── package.json
+├── server/                     # Hono API server powered by Bun & Effect
+│   ├── src/
+│   │   ├── config/             # JWT and authentication configuration
+│   │   ├── db/                 # SQLite schema (schema.sql), migration and seed logic
+│   │   ├── middleware/         # Auth, logging, error handling, Effect request validation
+│   │   ├── routes/             # Hono REST/RPC route handlers
+│   │   ├── services/           # Effect domain services & repositories (AppRuntime, TeacherRepo, etc.)
+│   │   ├── tests/              # 45+ integration test suite (auth, routes, database, logger)
+│   │   ├── utils/              # Structured logger with redaction, JWT sign/verify
+│   │   ├── client.ts           # Shared Hono RPC client type exports (AppType, hcWithType)
+│   │   └── index.ts            # Server entrypoint and route mounting
+│   └── package.json
+├── shared/                     # Shared TypeScript library
+│   ├── src/
+│   │   └── types/              # Effect Schemas, Class definitions, and TaggedErrors for all entities
+│   └── package.json
+├── tools/                      # Repository developer tools
+│   └── oxlint/anti-slop/       # Custom AST anti-slop plugins for Oxlint
+├── oxlint.config.ts            # Oxlint configuration
+├── package.json                # Root monorepo workspace configuration
+└── AGENTS.md                   # Guidance on Effect TypeScript library usage
+```
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- [Bun](https://bun.sh) (v1.1+ or v1.4+ recommended) installed on your system.
+
+### Installation
 
 1. **Clone the repository:**
 
@@ -75,194 +123,168 @@ The repository uses TypeScript 7 for builds through the `@typescript/native` ali
    cd classroom-management
    ```
 
-2. **Install dependencies for all workspaces:**
+2. **Install dependencies:**
 
    ```bash
    bun install
    ```
 
-3. **Start the development servers:**
+   > **Note:** `bun install` automatically triggers the `postinstall` script to build the `shared` and `server` packages.
 
-   In separate terminals:
+### Running Development Servers
 
-   ```bash
-   # Terminal 1 - Start the server
-   cd server && bun run dev
+You can run all services simultaneously using the root orchestrator:
 
-   # Terminal 2 - Start the client
-   cd client && npm run dev
-   ```
-
-4. **Open your browser:**
-
-   - Client: [http://localhost:5173](http://localhost:5173)
-   - Server API: [http://localhost:3000](http://localhost:3000)
-
-5. **Default Admin Credentials:**
-   - The system will create an admin user on first run
-   - Check the server console for the generated password
-   - Email: `admin@classroom.com`
-
-## 📁 Project Structure
-
-```
-.
-├── client/               # React frontend application
-│   ├── src/
-│   │   ├── components/   # Reusable UI components
-│   │   ├── pages/        # Page components for each entity
-│   │   ├── stores/       # Zustand state management
-│   │   └── lib/          # Utility functions
-│   ├── public/           # Static assets
-│   └── package.json      # Client dependencies
-├── server/               # Hono backend API
-│   ├── src/
-│   │   ├── routes/       # API route handlers
-│   │   ├── db/           # Database setup and operations
-│   │   └── middleware/   # Express-style middleware
-│   └── package.json      # Server dependencies
-├── shared/               # Shared TypeScript definitions
-│   └── src/types/        # Type definitions for all entities
-└── package.json          # Root workspace configuration
+```bash
+bun run dev
 ```
 
-## 🔌 API Endpoints
+This starts the following concurrently:
+- **Shared Watcher**: Watches and compiles `shared/src` to `shared/dist`
+- **Backend API**: Runs `server/src/index.ts` with Bun hot-reloading on [http://localhost:3000](http://localhost:3000)
+- **Frontend App**: Starts the Vite dev server on [http://localhost:5173](http://localhost:5173)
 
-The server provides complete REST API coverage for all entities:
+Or start each workspace individually:
 
-### Public Endpoints
+```bash
+# Terminal 1 - Shared types watcher
+bun run dev:shared
 
-- `GET /api/{entity}` - List all entities
-- `GET /api/{entity}/:id` - Get entity by ID
+# Terminal 2 - Server API
+bun run dev:server
 
-### Protected Endpoints (Require Authentication)
+# Terminal 3 - Client UI
+bun run dev:client
+```
 
-- `POST /api/{entity}` - Create new entity
-- `PUT /api/{entity}/:id` - Update entity
-- `DELETE /api/{entity}/:id` - Delete entity
+### Initial Admin Credentials
 
-### Authentication Endpoints
+On first run, the server automatically initializes SQLite in WAL mode and creates an administrator account if one does not already exist:
 
-- `POST /auth/teacher/login` - Teacher login
-- `POST /auth/teacher/register` - Teacher registration
-- `POST /auth/refresh` - Refresh access token
-- `POST /auth/logout` - Logout
-- `GET /auth/me` - Get current user
+- **Email**: `admin@classroom.com` (or value of `ADMIN_EMAIL`)
+- **Password**: If `ADMIN_PASSWORD` is not set in `.env`, a secure 12-character password will be printed to the server console upon startup.
 
-## 📊 Database Schema
+---
 
-The system uses SQLite with the following main entities:
+## ⚙️ Environment Configuration
 
-- **Teachers**: Profile information, department, contact details, role (teacher/admin)
-- **Students**: Personal information, enrollment status, contact details
-- **Classes**: Course information, schedule, teacher assignment
-- **Assignments**: Title, description, due dates, point values
-- **Announcements**: Class communications with expiration
-- **Submissions**: Student work submissions with status tracking
-- **Enrollments**: Student-class relationships with status
-- **Attendance**: Daily attendance records with status options
-- **Grades**: Assignment grades with feedback and scoring
-
-## 🎯 Usage Guide
-
-### Initial Setup
-
-1. **Setup Admin**: The system creates an admin user automatically on first run
-2. **Add Teachers**: Login as admin and add teacher profiles to the system
-3. **Create Classes**: Set up classes and assign teachers
-4. **Add Students**: Register students in the system
-5. **Manage Enrollments**: Enroll students in appropriate classes
-
-### Daily Operations
-
-1. **Create Assignments**: Teachers set up assignments with due dates and point values
-2. **Make Announcements**: Teachers communicate important information to students
-3. **Track Submissions**: Monitor student assignment submissions
-4. **Record Attendance**: Teachers track daily student attendance
-5. **Grade Work**: Evaluate submissions and provide feedback
-
-## 🔧 Configuration
-
-### Environment Variables
-
-Create a `.env` file in the server directory:
+Create a `.env` file in the `server` directory:
 
 ```env
-JWT_ACCESS_SECRET=your-access-secret
-JWT_REFRESH_SECRET=your-refresh-secret
+# Server & Logging
+PORT=3000
+NODE_ENV=development
+LOG_LEVEL=info # debug | info | warn | error | silent
+
+# JWT Secrets
+JWT_ACCESS_SECRET=your-secure-access-secret
+JWT_REFRESH_SECRET=your-secure-refresh-secret
+
+# Admin Account Seed (optional)
 ADMIN_EMAIL=admin@classroom.com
 ADMIN_PASSWORD=your-admin-password
-NODE_ENV=development
 ```
 
-Create a `.env` file in the client directory:
+Create a `.env` file in the `client` directory:
 
 ```env
 VITE_SERVER_URL=http://localhost:3000
 ```
 
-## 🏗️ Building for Production
+---
+
+## 🔌 API Reference
+
+### Authentication Endpoints
+
+| Method | Path | Description | Access |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/auth/login` | Unified login (auto-detects teacher/admin vs. student) | Public |
+| `POST` | `/auth/teacher/login` | Teacher & administrator login | Public |
+| `POST` | `/auth/student/login` | Student login | Public |
+| `POST` | `/auth/teacher/register` | Teacher self-registration | Public |
+| `POST` | `/auth/refresh` | Rotate and issue new access token via HTTP-only cookie | Public |
+| `POST` | `/auth/logout` | Revoke active refresh token in database | Authenticated |
+| `GET` | `/auth/me` | Fetch profile for currently authenticated user | Authenticated |
+
+### Entity Endpoints
+
+All entities (`teachers`, `students`, `classes`, `assignments`, `announcements`, `enrollments`, `submissions`, `grades`, `attendance`) follow consistent RESTful patterns:
+
+```
+GET    /api/{entity}      List all records
+GET    /api/{entity}/:id  Retrieve record by ID
+POST   /api/{entity}      Create new record
+PUT    /api/{entity}/:id  Update existing record
+DELETE /api/{entity}/:id  Delete record
+```
+
+#### Notable Special Endpoints:
+- `GET /api/classes/:id` — Aggregates full class details including assigned teacher, enrolled student profiles, assignments, and class announcements.
+- `GET /api/classes/student/:studentId` — Retrieves all classes for a specific enrolled student.
+- `GET /api/grades/student/:studentId` — Retrieves all grade records for a specific student.
+- `GET /api/attendance/student/:studentId` — Retrieves attendance history for a student.
+- `GET /api/announcements/class/:classId` — Retrieves all active announcements for a specific class.
+
+---
+
+## 🧪 Testing & Code Quality
+
+### Running Tests
+
+The test suite exercises end-to-end authentication, role-based authorization, database constraints, and sensitive data redaction:
+
+```bash
+bun test
+```
+
+### Linting & Anti-Slop Rules
+
+The repository includes both Oxlint and ESLint configurations:
+
+```bash
+# Run all linters
+bun run lint
+
+# Run Oxlint with custom anti-slop rules
+bun run lint:oxlint
+
+# Run ESLint on the client
+bun run lint:eslint
+```
+
+#### Custom Oxlint Anti-Slop Features:
+- **`anti-slop/require-safety-comment-for-type-assertion`**: Mandates explicit `// SAFETY:` justifications on all type assertions.
+- **`anti-slop/no-chained-type-assertions`**: Prohibits double assertions (`x as unknown as Y`).
+- **`anti-slop/no-known-value-widening`**: Enforces strict literal and narrowing types.
+- **`anti-slop-effect/no-service-constructor-imports`**: Protects Effect service layer boundaries.
+
+### Building for Production
 
 ```bash
 # Build all workspaces
-bun run build
-
-# Or build individually
-cd server && bun run build
-cd client && npm run build
+bun run build:shared && bun run build:server && bun run build:client
 ```
 
-## 🧪 Development
+---
 
-### Adding New Features
+## ℹ️ TypeScript Compatibility Notice
 
-1. **Types**: Add new types in `shared/src/types/`
-2. **Server**: Create routes in `server/src/routes/`
-3. **Client**: Add stores in `client/src/stores/` and pages in `client/src/pages/`
-4. **UI**: Update navigation and add new pages to the router
+This project utilizes TypeScript 7 native features through the `@typescript/native` package for optimized compilation. To maintain complete compatibility with the ESLint and typescript-eslint compiler APIs, `@typescript/typescript6` is installed alongside it.
 
-### Database Migrations
-
-- Modify `server/src/db/schema.sql` for schema changes
-- Update `server/src/db/database.ts` for new operations
-- The system handles migrations automatically on startup
+---
 
 ## 🤝 Contributing
 
-We welcome contributions! Please follow these guidelines:
-
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Follow the existing code structure and naming conventions
-4. Ensure type safety across all new features
-5. Add proper error handling for all operations
-6. Update documentation for any new functionality
-7. Test both client and server integration
-8. Commit your changes (`git commit -m 'Add amazing feature'`)
-9. Push to the branch (`git push origin feature/amazing-feature`)
-10. Open a Pull Request
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Ensure all tests pass (`bun test`) and lints are clean (`bun run lint`)
+4. Commit your changes with conventional commit messages (`git commit -m 'feat: add amazing feature'`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
+
+---
 
 ## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Built with ❤️ using the modern TypeScript ecosystem
-- Inspired by the needs of educational institutions
-- Thanks to all the open-source projects that made this possible
-
-## 🐛 Known Issues
-
-- Browser storage APIs (localStorage, sessionStorage) are not supported in Claude.ai artifacts
-- Refresh token rotation requires secure HTTP-only cookies
-
-## 📞 Support
-
-- Create an issue for bug reports or feature requests
-- Check existing issues before creating new ones
-- Provide detailed information for bug reports
-
----
-
-Built with the modern full-stack TypeScript development stack.
