@@ -153,13 +153,7 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
 
     setCookie(c, 'refresh_token', result.refreshToken, AUTH_CONFIG.COOKIE_OPTIONS)
     return c.json({
-      user: {
-        id: result.teacher.id,
-        email: result.teacher.email,
-        firstName: result.teacher.first_name,
-        lastName: result.teacher.last_name,
-        role: result.teacher.role || 'teacher'
-      },
+      user: result.user,
       accessToken: result.accessToken
     })
   })
@@ -216,14 +210,7 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
 
     setCookie(c, 'refresh_token', result.refreshToken, AUTH_CONFIG.COOKIE_OPTIONS)
     return c.json({
-      user: {
-        id: result.student.id,
-        email: result.student.email,
-        firstName: result.student.first_name,
-        lastName: result.student.last_name,
-        role: 'student',
-        gradeLevel: result.student.grade_level
-      },
+      user: result.user,
       accessToken: result.accessToken
     })
   })
@@ -310,28 +297,28 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
       if (user.userType === 'teacher') {
         const teacher = yield* teacherRepo.findByIdOrNull(user.id)
         if (!teacher) return null
-        return {
-          user: {
-            id: teacher.id,
-            email: teacher.email,
-            firstName: teacher.first_name,
-            lastName: teacher.last_name,
-            role: teacher.role || 'teacher'
-          }
+        const authUser: AuthUser = {
+          id: teacher.id,
+          email: teacher.email,
+          firstName: teacher.first_name,
+          lastName: teacher.last_name,
+          role: teacher.role || 'teacher',
+          userType: 'teacher'
         }
+        return { user: authUser }
       } else {
         const student = yield* studentRepo.findByIdOrNull(user.id)
         if (!student) return null
-        return {
-          user: {
-            id: student.id,
-            email: student.email,
-            firstName: student.first_name,
-            lastName: student.last_name,
-            role: 'student',
-            gradeLevel: student.grade_level
-          }
+        const authUser: AuthUser = {
+          id: student.id,
+          email: student.email,
+          firstName: student.first_name,
+          lastName: student.last_name,
+          role: 'student',
+          userType: 'student',
+          gradeLevel: student.grade_level
         }
+        return { user: authUser }
       }
     })
 
@@ -364,7 +351,9 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
       const user: AuthUser = {
         id: teacher.id,
         email: teacher.email,
-        role: 'teacher',
+        firstName: teacher.first_name,
+        lastName: teacher.last_name,
+        role: teacher.role || 'teacher',
         userType: 'teacher'
       }
 
@@ -384,13 +373,7 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
       return {
         status: 201 as const,
         data: {
-          user: {
-            id: teacher.id,
-            email: teacher.email,
-            firstName: teacher.first_name,
-            lastName: teacher.last_name,
-            role: 'teacher'
-          },
+          user,
           accessToken,
           refreshToken
         }

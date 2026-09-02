@@ -1,4 +1,10 @@
 import { describe, it, expect, beforeAll } from "bun:test";
+import { Schema } from "effect";
+import {
+  LoginResponse,
+  AuthResponse as SharedAuthResponse,
+  RefreshResponse
+} from "shared/dist";
 import { app } from "../index";
 import { initializeDatabase, createStudent } from "../db/database";
 
@@ -7,7 +13,7 @@ beforeAll(() => {
 });
 
 interface AuthResponse {
-  user?: { email?: string; role?: string };
+  user?: { email?: string; role?: string; userType?: string };
   accessToken?: string;
   error?: string;
 }
@@ -39,7 +45,11 @@ describe("Authentication & Authorization API", () => {
     expect(body.user).toBeDefined();
     expect(body.user?.email).toBe(teacherEmail);
     expect(body.user?.role).toBe("teacher");
+    expect(body.user?.userType).toBe("teacher");
     expect(body.accessToken).toBeDefined();
+
+    const decoded = Schema.decodeUnknownSync(LoginResponse)(body);
+    expect(decoded.user.userType).toBe("teacher");
 
     teacherToken = body.accessToken || "";
     const setCookie = res.headers.get("set-cookie");
@@ -78,7 +88,12 @@ describe("Authentication & Authorization API", () => {
     // SAFETY: login response returns AuthResponse json
     const body = (await res.json()) as AuthResponse;
     expect(body.user?.email).toBe(teacherEmail);
+    expect(body.user?.userType).toBe("teacher");
     expect(body.accessToken).toBeDefined();
+
+    const decoded = Schema.decodeUnknownSync(LoginResponse)(body);
+    expect(decoded.user.userType).toBe("teacher");
+
     teacherToken = body.accessToken || "";
 
     const setCookie = res.headers.get("set-cookie");
@@ -102,7 +117,11 @@ describe("Authentication & Authorization API", () => {
     const body = (await res.json()) as AuthResponse;
     expect(body.user?.email).toBe(teacherEmail);
     expect(body.user?.role).toBe("teacher");
+    expect(body.user?.userType).toBe("teacher");
     expect(body.accessToken).toBeDefined();
+
+    const decoded = Schema.decodeUnknownSync(LoginResponse)(body);
+    expect(decoded.user.userType).toBe("teacher");
   });
 
   it("should create a student with password and log in via student endpoints", async () => {
@@ -134,7 +153,11 @@ describe("Authentication & Authorization API", () => {
     const body = (await res.json()) as AuthResponse;
     expect(body.user?.email).toBe(studentEmail);
     expect(body.user?.role).toBe("student");
+    expect(body.user?.userType).toBe("student");
     expect(body.accessToken).toBeDefined();
+
+    const decoded = Schema.decodeUnknownSync(LoginResponse)(body);
+    expect(decoded.user.userType).toBe("student");
 
     // Login via unified /auth/login
     const unifiedRes = await app.request("/auth/login", {
@@ -151,6 +174,10 @@ describe("Authentication & Authorization API", () => {
     const unifiedBody = (await unifiedRes.json()) as AuthResponse;
     expect(unifiedBody.user?.email).toBe(studentEmail);
     expect(unifiedBody.user?.role).toBe("student");
+    expect(unifiedBody.user?.userType).toBe("student");
+
+    const decodedUnified = Schema.decodeUnknownSync(LoginResponse)(unifiedBody);
+    expect(decodedUnified.user.userType).toBe("student");
   });
 
   it("should return current user data on /auth/me", async () => {
@@ -166,6 +193,10 @@ describe("Authentication & Authorization API", () => {
     const body = (await res.json()) as AuthResponse;
     expect(body.user?.email).toBe(teacherEmail);
     expect(body.user?.role).toBe("teacher");
+    expect(body.user?.userType).toBe("teacher");
+
+    const decoded = Schema.decodeUnknownSync(SharedAuthResponse)(body);
+    expect(decoded.user.userType).toBe("teacher");
   });
 
   it("should refresh access token via /auth/refresh with cookie", async () => {
@@ -183,6 +214,10 @@ describe("Authentication & Authorization API", () => {
     const body = (await res.json()) as AuthResponse;
     expect(body.accessToken).toBeDefined();
     expect(body.user?.email).toBe(teacherEmail);
+    expect(body.user?.userType).toBe("teacher");
+
+    const decoded = Schema.decodeUnknownSync(RefreshResponse)(body);
+    expect(decoded.user.userType).toBe("teacher");
   });
 
   it("should reject /auth/me with invalid or missing token", async () => {

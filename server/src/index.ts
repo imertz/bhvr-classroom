@@ -28,12 +28,21 @@ import { appRuntime } from "./services/AppRuntime";
 initializeDatabase();
 initializeAdminUser();
 
-const shutdown = () => {
-	void appRuntime.dispose();
+let isShuttingDown = false;
+const shutdown = async () => {
+	if (isShuttingDown) return;
+	isShuttingDown = true;
+	try {
+		await appRuntime.dispose();
+	} catch (err) {
+		console.error("Error during shutdown:", err);
+	} finally {
+		process.exit(0);
+	}
 };
 
-process.once("SIGINT", shutdown);
-process.once("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
 
 export const app = new Hono<{ Variables: AuthVariables }>()
 	.use(requestId())

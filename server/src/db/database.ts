@@ -31,6 +31,12 @@ export function initializeDatabase() {
   );
 }
 
+export async function closeDatabase(): Promise<void> {
+  await appRuntime.runPromise(
+    SqliteClient.use((sqlite) => sqlite.close())
+  );
+}
+
 export async function initializeAdminUser(): Promise<void> {
   await appRuntime.runPromise(
     AuthService.use((auth) => auth.initializeAdminUser())
