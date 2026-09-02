@@ -37,6 +37,7 @@
     "@typescript/native": "npm:typescript@^7.0.2",
     "bun-types": "^1.4.0",
     "concurrently": "^10.0.5",
+    "effect": "^4.0.0-rc.112",
     "oxlint": "1.81.0",
     "typescript": "npm:@typescript/typescript6@^6.0.2"
   },
