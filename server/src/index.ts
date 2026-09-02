@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { requestId } from "hono/request-id";
 import type { AuthVariables } from './types/auth'
 
 // Import all route files
@@ -16,7 +17,8 @@ import { announcementRoutes } from "./routes/announcements";
 
 // Import middleware
 import { requireTeacher, requireAuth, optionalAuthMiddleware, requireAdmin } from "./middleware/auth";
-import { errorMiddleware } from "./middleware/error";
+import { requestLogger } from "./middleware/logging";
+import { errorMiddleware, errorHandler } from "./middleware/error";
 
 // Initialize database
 import { initializeDatabase, initializeAdminUser } from "./db/database";
@@ -26,11 +28,14 @@ initializeDatabase();
 initializeAdminUser();
 
 export const app = new Hono<{ Variables: AuthVariables }>()
+	.use(requestId())
+	.use(requestLogger)
 	.use(cors({
 		origin: 'http://localhost:5173',
 		credentials: true,
 	}))
 	.use(errorMiddleware)
+	.onError(errorHandler)
 
 // Public routes
 app.get("/", (c) => c.text("Classroom Management API"));

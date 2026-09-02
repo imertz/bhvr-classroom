@@ -20,9 +20,11 @@ export interface RefreshTokenPayload extends SharedRefreshTokenPayload, JWTPaylo
 export interface AuthVariables {
   user?: AuthUser;
   jwtPayload?: AccessTokenPayload;
+  requestId?: string;
 }
 
 export interface RequiredAuthVariables {
   user: AuthUser;
   jwtPayload: AccessTokenPayload;
+  requestId: string;
 }
