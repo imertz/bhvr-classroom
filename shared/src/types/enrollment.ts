@@ -1,41 +1,27 @@
 // shared/src/types/enrollment.ts
-import { z } from 'zod'
+import { Schema } from "effect";
 
-/**
- * Main enrollment interface
- */
-export interface Enrollment {
-  id: string
-  student_id: string
-  class_id: string
-  enrolled_at: string
-  status: 'active' | 'dropped' | 'completed'
-}
+export class Enrollment extends Schema.Class<Enrollment>("Enrollment")({
+  id: Schema.String,
+  student_id: Schema.String,
+  class_id: Schema.String,
+  enrolled_at: Schema.String,
+  status: Schema.Literals(["active", "dropped", "completed"]),
+}) {}
 
-/**
- * Input type for creating/updating
- */
-export type EnrollmentInput = Omit<Enrollment, 'id' | 'enrolled_at' | 'status'> & {
-  status?: 'active' | 'dropped' | 'completed';
-}
+export class EnrollmentInput extends Schema.Class<EnrollmentInput>("EnrollmentInput")({
+  student_id: Schema.String,
+  class_id: Schema.String,
+  status: Schema.optional(Schema.Literals(["active", "dropped", "completed"])),
+}) {}
 
-/**
- * Zod schema for validation
- */
-export const EnrollmentSchema = z.object({
-  student_id: z.string(),
-  class_id: z.string(),
-  status: z.enum(['active', 'dropped', 'completed']).optional(),
-})
+export const EnrollmentSchema = EnrollmentInput;
 
-/**
- * Response types
- */
 export interface EnrollmentListResponse {
-  data: Enrollment[]
-  count: number
+  data: Enrollment[];
+  count: number;
 }
 
 export interface EnrollmentResponse {
-  data: Enrollment
+  data: Enrollment;
 }

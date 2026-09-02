@@ -1,25 +1,11 @@
-/**
- * @file students.ts
- * @description Handles all student-related API endpoints
- * 
- * Endpoints:
- * - GET    /students      - List all students
- * - GET    /students/:id  - Get student by ID
- * - POST   /students      - Create new student
- * - PUT    /students/:id  - Update student
- * - DELETE /students/:id  - Delete student
- */
-
 import { Hono } from 'hono'
-import { zValidator } from '@hono/zod-validator'
-import { StudentSchema } from 'shared/src/types/student'
-import {
-  createStudent,
-  findStudentById,
-  findAllStudents,
-  updateStudent,
-  deleteStudent
-} from '../db/database'
+import { Effect } from 'effect'
+import { StudentSchema, StudentInput, makePartial } from 'shared/dist'
+import { effectValidator } from '../middleware/validator'
+import { appRuntime } from '../services/AppRuntime'
+import { StudentRepo } from '../services/StudentRepo'
+
+const StudentUpdateSchema = makePartial(StudentInput.fields)
 
 export const studentRoutes = new Hono()
   /**
@@ -27,7 +13,9 @@ export const studentRoutes = new Hono()
    */
   .get('/', async (c) => {
     try {
-      const students = await findAllStudents()
+      const students = await appRuntime.runPromise(
+        StudentRepo.use((repo) => repo.findAll())
+      )
       return c.json({ data: students, count: students.length })
     } catch (error) {
       console.error('Error listing students:', error)
@@ -42,7 +30,11 @@ export const studentRoutes = new Hono()
     const id = c.req.param('id')
 
     try {
-      const student = await findStudentById(id)
+      const student = await appRuntime.runPromise(
+        StudentRepo.use((repo) => repo.findById(id)).pipe(
+          Effect.catchTag('NotFoundError', () => Effect.succeed(null))
+        )
+      )
       if (!student) {
         return c.json({ error: 'Student not found' }, 404)
       }
@@ -56,11 +48,13 @@ export const studentRoutes = new Hono()
   /**
    * Create new student
    */
-  .post('/', zValidator('json', StudentSchema), async (c) => {
+  .post('/', effectValidator('json', StudentSchema), async (c) => {
     const data = c.req.valid('json')
 
     try {
-      const student = await createStudent(data)
+      const student = await appRuntime.runPromise(
+        StudentRepo.use((repo) => repo.create(data))
+      )
       return c.json({ data: student }, 201)
     } catch (error) {
       console.error('Error creating student:', error)
@@ -71,12 +65,16 @@ export const studentRoutes = new Hono()
   /**
    * Update student
    */
-  .put('/:id', zValidator('json', StudentSchema.partial()), async (c) => {
+  .put('/:id', effectValidator('json', StudentUpdateSchema), async (c) => {
     const id = c.req.param('id')
     const data = c.req.valid('json')
 
     try {
-      const student = await updateStudent(id, data)
+      const student = await appRuntime.runPromise(
+        StudentRepo.use((repo) => repo.update(id, data)).pipe(
+          Effect.catchTag('NotFoundError', () => Effect.succeed(null))
+        )
+      )
       if (!student) {
         return c.json({ error: 'Student not found' }, 404)
       }
@@ -94,7 +92,9 @@ export const studentRoutes = new Hono()
     const id = c.req.param('id')
 
     try {
-      const deleted = await deleteStudent(id)
+      const deleted = await appRuntime.runPromise(
+        StudentRepo.use((repo) => repo.delete(id))
+      )
       if (!deleted) {
         return c.json({ error: 'Student not found' }, 404)
       }
@@ -102,5 +102,22 @@ export const studentRoutes = new Hono()
     } catch (error) {
       console.error('Error deleting student:', error)
       return c.json({ error: 'Failed to delete student' }, 500)
+    }
+  })
+
+  /**
+   * Get students for a specific class
+   */
+  .get('/class/:classId', async (c) => {
+    const classId = c.req.param('classId')
+
+    try {
+      const students = await appRuntime.runPromise(
+        StudentRepo.use((repo) => repo.findByClassId(classId))
+      )
+      return c.json({ data: students, count: students.length })
+    } catch (error) {
+      console.error('Error getting class students:', error)
+      return c.json({ error: 'Failed to get class students' }, 500)
     }
   })

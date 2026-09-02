@@ -1,27 +1,12 @@
-/**
- * @file enrollments.ts
- * @description Handles all enrollment-related API endpoints
- * 
- * Endpoints:
- * - GET    /enrollments      - List all enrollments
- * - GET    /enrollments/:id  - Get enrollment by ID
- * - POST   /enrollments      - Create new enrollment
- * - PUT    /enrollments/:id  - Update enrollment
- * - DELETE /enrollments/:id  - Delete enrollment
- */
-
 import { Hono } from 'hono'
-import { zValidator } from '@hono/zod-validator'
-import { EnrollmentSchema } from 'shared/src/types/enrollment'
+import { Effect } from 'effect'
+import { EnrollmentSchema, EnrollmentInput, makePartial } from 'shared/dist'
 import type { AuthVariables } from '../types/auth'
-import {
-  createEnrollment,
-  findEnrollmentById,
-  findAllEnrollments,
-  findEnrollmentsByStudentId,
-  updateEnrollment,
-  deleteEnrollment
-} from '../db/database'
+import { effectValidator } from '../middleware/validator'
+import { appRuntime } from '../services/AppRuntime'
+import { EnrollmentRepo } from '../services/EnrollmentRepo'
+
+const EnrollmentUpdateSchema = makePartial(EnrollmentInput.fields)
 
 export const enrollmentRoutes = new Hono<{ Variables: AuthVariables }>()
   /**
@@ -32,11 +17,15 @@ export const enrollmentRoutes = new Hono<{ Variables: AuthVariables }>()
 
     try {
       if (user?.role === 'student') {
-        const enrollments = await findEnrollmentsByStudentId(user.id)
+        const enrollments = await appRuntime.runPromise(
+          EnrollmentRepo.use((repo) => repo.findByStudentId(user.id))
+        )
         return c.json({ data: enrollments, count: enrollments.length })
       }
 
-      const enrollments = await findAllEnrollments()
+      const enrollments = await appRuntime.runPromise(
+        EnrollmentRepo.use((repo) => repo.findAll())
+      )
       return c.json({ data: enrollments, count: enrollments.length })
     } catch (error) {
       console.error('Error listing enrollments:', error)
@@ -51,7 +40,9 @@ export const enrollmentRoutes = new Hono<{ Variables: AuthVariables }>()
     const studentId = c.req.param('studentId')
 
     try {
-      const enrollments = await findEnrollmentsByStudentId(studentId)
+      const enrollments = await appRuntime.runPromise(
+        EnrollmentRepo.use((repo) => repo.findByStudentId(studentId))
+      )
       return c.json({ data: enrollments, count: enrollments.length })
     } catch (error) {
       console.error('Error getting student enrollments:', error)
@@ -66,7 +57,11 @@ export const enrollmentRoutes = new Hono<{ Variables: AuthVariables }>()
     const id = c.req.param('id')
 
     try {
-      const enrollment = await findEnrollmentById(id)
+      const enrollment = await appRuntime.runPromise(
+        EnrollmentRepo.use((repo) => repo.findById(id)).pipe(
+          Effect.catchTag('NotFoundError', () => Effect.succeed(null))
+        )
+      )
       if (!enrollment) {
         return c.json({ error: 'Enrollment not found' }, 404)
       }
@@ -80,11 +75,13 @@ export const enrollmentRoutes = new Hono<{ Variables: AuthVariables }>()
   /**
    * Create new enrollment
    */
-  .post('/', zValidator('json', EnrollmentSchema), async (c) => {
+  .post('/', effectValidator('json', EnrollmentSchema), async (c) => {
     const data = c.req.valid('json')
 
     try {
-      const enrollment = await createEnrollment(data)
+      const enrollment = await appRuntime.runPromise(
+        EnrollmentRepo.use((repo) => repo.create(data))
+      )
       return c.json({ data: enrollment }, 201)
     } catch (error) {
       console.error('Error creating enrollment:', error)
@@ -95,12 +92,16 @@ export const enrollmentRoutes = new Hono<{ Variables: AuthVariables }>()
   /**
    * Update enrollment
    */
-  .put('/:id', zValidator('json', EnrollmentSchema.partial()), async (c) => {
+  .put('/:id', effectValidator('json', EnrollmentUpdateSchema), async (c) => {
     const id = c.req.param('id')
     const data = c.req.valid('json')
 
     try {
-      const enrollment = await updateEnrollment(id, data)
+      const enrollment = await appRuntime.runPromise(
+        EnrollmentRepo.use((repo) => repo.update(id, data)).pipe(
+          Effect.catchTag('NotFoundError', () => Effect.succeed(null))
+        )
+      )
       if (!enrollment) {
         return c.json({ error: 'Enrollment not found' }, 404)
       }
@@ -118,7 +119,9 @@ export const enrollmentRoutes = new Hono<{ Variables: AuthVariables }>()
     const id = c.req.param('id')
 
     try {
-      const deleted = await deleteEnrollment(id)
+      const deleted = await appRuntime.runPromise(
+        EnrollmentRepo.use((repo) => repo.delete(id))
+      )
       if (!deleted) {
         return c.json({ error: 'Enrollment not found' }, 404)
       }

@@ -1,25 +1,11 @@
-/**
- * @file teachers.ts
- * @description Handles all teacher-related API endpoints
- * 
- * Endpoints:
- * - GET    /teachers      - List all teachers
- * - GET    /teachers/:id  - Get teacher by ID
- * - POST   /teachers      - Create new teacher
- * - PUT    /teachers/:id  - Update teacher
- * - DELETE /teachers/:id  - Delete teacher
- */
-
 import { Hono } from 'hono'
-import { zValidator } from '@hono/zod-validator'
-import { TeacherSchema } from 'shared/src/types/teacher'
-import {
-  createTeacher,
-  findTeacherById,
-  findAllTeachers,
-  updateTeacher,
-  deleteTeacher
-} from '../db/database'
+import { Effect } from 'effect'
+import { TeacherSchema, TeacherInput, makePartial } from 'shared/dist'
+import { effectValidator } from '../middleware/validator'
+import { appRuntime } from '../services/AppRuntime'
+import { TeacherRepo } from '../services/TeacherRepo'
+
+const TeacherUpdateSchema = makePartial(TeacherInput.fields)
 
 export const teacherRoutes = new Hono()
   /**
@@ -27,7 +13,9 @@ export const teacherRoutes = new Hono()
    */
   .get('/', async (c) => {
     try {
-      const teachers = await findAllTeachers()
+      const teachers = await appRuntime.runPromise(
+        TeacherRepo.use((repo) => repo.findAll())
+      )
       return c.json({ data: teachers, count: teachers.length })
     } catch (error) {
       console.error('Error listing teachers:', error)
@@ -42,7 +30,11 @@ export const teacherRoutes = new Hono()
     const id = c.req.param('id')
 
     try {
-      const teacher = await findTeacherById(id)
+      const teacher = await appRuntime.runPromise(
+        TeacherRepo.use((repo) => repo.findById(id)).pipe(
+          Effect.catchTag('NotFoundError', () => Effect.succeed(null))
+        )
+      )
       if (!teacher) {
         return c.json({ error: 'Teacher not found' }, 404)
       }
@@ -56,11 +48,13 @@ export const teacherRoutes = new Hono()
   /**
    * Create new teacher
    */
-  .post('/', zValidator('json', TeacherSchema), async (c) => {
+  .post('/', effectValidator('json', TeacherSchema), async (c) => {
     const data = c.req.valid('json')
 
     try {
-      const teacher = await createTeacher(data)
+      const teacher = await appRuntime.runPromise(
+        TeacherRepo.use((repo) => repo.create(data))
+      )
       return c.json({ data: teacher }, 201)
     } catch (error) {
       console.error('Error creating teacher:', error)
@@ -71,12 +65,16 @@ export const teacherRoutes = new Hono()
   /**
    * Update teacher
    */
-  .put('/:id', zValidator('json', TeacherSchema.partial()), async (c) => {
+  .put('/:id', effectValidator('json', TeacherUpdateSchema), async (c) => {
     const id = c.req.param('id')
     const data = c.req.valid('json')
 
     try {
-      const teacher = await updateTeacher(id, data)
+      const teacher = await appRuntime.runPromise(
+        TeacherRepo.use((repo) => repo.update(id, data)).pipe(
+          Effect.catchTag('NotFoundError', () => Effect.succeed(null))
+        )
+      )
       if (!teacher) {
         return c.json({ error: 'Teacher not found' }, 404)
       }
@@ -94,7 +92,9 @@ export const teacherRoutes = new Hono()
     const id = c.req.param('id')
 
     try {
-      const deleted = await deleteTeacher(id)
+      const deleted = await appRuntime.runPromise(
+        TeacherRepo.use((repo) => repo.delete(id))
+      )
       if (!deleted) {
         return c.json({ error: 'Teacher not found' }, 404)
       }

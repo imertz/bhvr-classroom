@@ -1,41 +1,29 @@
 // shared/src/types/submission.ts
-import { z } from 'zod'
+import { Schema } from "effect";
 
-/**
- * Main submission interface
- */
-export interface Submission {
-  id: string
-  assignment_id: string
-  student_id: string
-  submitted_at: string
-  content?: string | null // JSON string
-  status?: 'submitted' | 'graded' | 'returned'
-}
+export class Submission extends Schema.Class<Submission>("Submission")({
+  id: Schema.String,
+  assignment_id: Schema.String,
+  student_id: Schema.String,
+  submitted_at: Schema.String,
+  content: Schema.optional(Schema.NullOr(Schema.String)),
+  status: Schema.optional(Schema.Literals(["submitted", "graded", "returned"])),
+}) {}
 
-/**
- * Input type for creating/updating
- */
-export type SubmissionInput = Omit<Submission, 'id' | 'submitted_at'>
+export class SubmissionInput extends Schema.Class<SubmissionInput>("SubmissionInput")({
+  assignment_id: Schema.String,
+  student_id: Schema.String,
+  content: Schema.optional(Schema.NullOr(Schema.String)),
+  status: Schema.optional(Schema.Literals(["submitted", "graded", "returned"])),
+}) {}
 
-/**
- * Zod schema for validation
- */
-export const SubmissionSchema = z.object({
-  assignment_id: z.string(),
-  student_id: z.string(),
-  content: z.string().optional().nullable(),
-  status: z.enum(['submitted', 'graded', 'returned']).optional(),
-})
+export const SubmissionSchema = SubmissionInput;
 
-/**
- * Response types
- */
 export interface SubmissionListResponse {
-  data: Submission[]
-  count: number
+  data: Submission[];
+  count: number;
 }
 
 export interface SubmissionResponse {
-  data: Submission
+  data: Submission;
 }

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@hono/zod-validator": "^0.9.1",
+    "effect": "4.0.0-rc.112",
     "hono": "^4.13.5",
     "shared": "workspace:*",
     "zod": "^4.5.4"

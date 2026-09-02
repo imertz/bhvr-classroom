@@ -1,25 +1,11 @@
-/**
- * @file announcements.ts
- * @description Handles all announcement-related API endpoints
- * 
- * Endpoints:
- * - GET    /announcements      - List all announcements
- * - GET    /announcements/:id  - Get announcement by ID
- * - POST   /announcements      - Create new announcement
- * - PUT    /announcements/:id  - Update announcement
- * - DELETE /announcements/:id  - Delete announcement
- */
-
 import { Hono } from 'hono'
-import { zValidator } from '@hono/zod-validator'
-import { AnnouncementSchema } from 'shared/src/types/announcement'
-import {
-  createAnnouncement,
-  findAnnouncementById,
-  findAllAnnouncements,
-  updateAnnouncement,
-  deleteAnnouncement
-} from '../db/database'
+import { Effect } from 'effect'
+import { AnnouncementSchema, AnnouncementInput, makePartial } from 'shared/dist'
+import { effectValidator } from '../middleware/validator'
+import { appRuntime } from '../services/AppRuntime'
+import { AnnouncementRepo } from '../services/AnnouncementRepo'
+
+const AnnouncementUpdateSchema = makePartial(AnnouncementInput.fields)
 
 export const announcementRoutes = new Hono()
   /**
@@ -27,7 +13,9 @@ export const announcementRoutes = new Hono()
    */
   .get('/', async (c) => {
     try {
-      const announcements = await findAllAnnouncements()
+      const announcements = await appRuntime.runPromise(
+        AnnouncementRepo.use((repo) => repo.findAll())
+      )
       return c.json({ data: announcements, count: announcements.length })
     } catch (error) {
       console.error('Error listing announcements:', error)
@@ -42,7 +30,11 @@ export const announcementRoutes = new Hono()
     const id = c.req.param('id')
 
     try {
-      const announcement = await findAnnouncementById(id)
+      const announcement = await appRuntime.runPromise(
+        AnnouncementRepo.use((repo) => repo.findById(id)).pipe(
+          Effect.catchTag('NotFoundError', () => Effect.succeed(null))
+        )
+      )
       if (!announcement) {
         return c.json({ error: 'Announcement not found' }, 404)
       }
@@ -56,11 +48,13 @@ export const announcementRoutes = new Hono()
   /**
    * Create new announcement
    */
-  .post('/', zValidator('json', AnnouncementSchema), async (c) => {
+  .post('/', effectValidator('json', AnnouncementSchema), async (c) => {
     const data = c.req.valid('json')
 
     try {
-      const announcement = await createAnnouncement(data)
+      const announcement = await appRuntime.runPromise(
+        AnnouncementRepo.use((repo) => repo.create(data))
+      )
       return c.json({ data: announcement }, 201)
     } catch (error) {
       console.error('Error creating announcement:', error)
@@ -71,12 +65,16 @@ export const announcementRoutes = new Hono()
   /**
    * Update announcement
    */
-  .put('/:id', zValidator('json', AnnouncementSchema.partial()), async (c) => {
+  .put('/:id', effectValidator('json', AnnouncementUpdateSchema), async (c) => {
     const id = c.req.param('id')
     const data = c.req.valid('json')
 
     try {
-      const announcement = await updateAnnouncement(id, data)
+      const announcement = await appRuntime.runPromise(
+        AnnouncementRepo.use((repo) => repo.update(id, data)).pipe(
+          Effect.catchTag('NotFoundError', () => Effect.succeed(null))
+        )
+      )
       if (!announcement) {
         return c.json({ error: 'Announcement not found' }, 404)
       }
@@ -94,7 +92,9 @@ export const announcementRoutes = new Hono()
     const id = c.req.param('id')
 
     try {
-      const deleted = await deleteAnnouncement(id)
+      const deleted = await appRuntime.runPromise(
+        AnnouncementRepo.use((repo) => repo.delete(id))
+      )
       if (!deleted) {
         return c.json({ error: 'Announcement not found' }, 404)
       }

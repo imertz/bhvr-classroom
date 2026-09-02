@@ -1,53 +1,39 @@
 // shared/src/types/teacher.ts
-import { z } from 'zod'
+import { Schema } from "effect";
 
-/**
- * Main teacher interface
- */
-export interface Teacher {
-  id: string
-  email: string
-  first_name: string
-  last_name: string
-  role: 'teacher' | 'admin'
-  created_at: string
-  updated_at: string
-}
+export class Teacher extends Schema.Class<Teacher>("Teacher")({
+  id: Schema.String,
+  email: Schema.String,
+  first_name: Schema.String,
+  last_name: Schema.String,
+  role: Schema.Literals(["teacher", "admin"]),
+  created_at: Schema.String,
+  updated_at: Schema.String,
+}) {}
 
-export type TeacherInput = Omit<Teacher, 'id' | 'created_at' | 'updated_at' | 'role'> & {
-  role?: 'teacher' | 'admin';
-  password?: string;
-}
+export class TeacherInput extends Schema.Class<TeacherInput>("TeacherInput")({
+  email: Schema.String,
+  first_name: Schema.String,
+  last_name: Schema.String,
+  role: Schema.optional(Schema.Literals(["teacher", "admin"])),
+  password: Schema.optional(Schema.String),
+}) {}
 
-/**
- * Zod schema for validation
- */
-export const TeacherSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8).optional(),
-  first_name: z.string(),
-  last_name: z.string(),
-  role: z.enum(['teacher', 'admin']).default('teacher'),
-})
+export class TeacherRegistrationInput extends Schema.Class<TeacherRegistrationInput>("TeacherRegistrationInput")({
+  email: Schema.String,
+  password: Schema.String,
+  first_name: Schema.String,
+  last_name: Schema.String,
+}) {}
 
-/**
- * Teacher registration schema
- */
-export const TeacherRegistrationSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  first_name: z.string().min(1, 'First name is required'),
-  last_name: z.string().min(1, 'Last name is required'),
-})
+export const TeacherSchema = TeacherInput;
+export const TeacherRegistrationSchema = TeacherRegistrationInput;
 
-/**
- * Response types
- */
 export interface TeacherListResponse {
-  data: Teacher[]
-  count: number
+  data: Teacher[];
+  count: number;
 }
 
 export interface TeacherResponse {
-  data: Teacher
+  data: Teacher;
 }

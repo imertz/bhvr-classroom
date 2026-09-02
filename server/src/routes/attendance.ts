@@ -1,27 +1,12 @@
-/**
- * @file attendance.ts
- * @description Handles all attendance-related API endpoints
- * 
- * Endpoints:
- * - GET    /attendance      - List all attendance records
- * - GET    /attendance/:id  - Get attendance record by ID
- * - POST   /attendance      - Create new attendance record
- * - PUT    /attendance/:id  - Update attendance record
- * - DELETE /attendance/:id  - Delete attendance record
- */
-
 import { Hono } from 'hono'
-import { zValidator } from '@hono/zod-validator'
-import { AttendanceSchema } from 'shared/src/types/attendance'
+import { Effect } from 'effect'
+import { AttendanceSchema, AttendanceInput, makePartial } from 'shared/dist'
 import type { AuthVariables } from '../types/auth'
-import {
-  createAttendance,
-  findAttendanceById,
-  findAllAttendances,
-  findAttendancesByStudentId,
-  updateAttendance,
-  deleteAttendance
-} from '../db/database'
+import { effectValidator } from '../middleware/validator'
+import { appRuntime } from '../services/AppRuntime'
+import { AttendanceRepo } from '../services/AttendanceRepo'
+
+const AttendanceUpdateSchema = makePartial(AttendanceInput.fields)
 
 export const attendanceRoutes = new Hono<{ Variables: AuthVariables }>()
   /**
@@ -32,11 +17,15 @@ export const attendanceRoutes = new Hono<{ Variables: AuthVariables }>()
 
     try {
       if (user?.role === 'student') {
-        const attendances = await findAttendancesByStudentId(user.id)
+        const attendances = await appRuntime.runPromise(
+          AttendanceRepo.use((repo) => repo.findByStudentId(user.id))
+        )
         return c.json({ data: attendances, count: attendances.length })
       }
 
-      const attendances = await findAllAttendances()
+      const attendances = await appRuntime.runPromise(
+        AttendanceRepo.use((repo) => repo.findAll())
+      )
       return c.json({ data: attendances, count: attendances.length })
     } catch (error) {
       console.error('Error listing attendance records:', error)
@@ -56,7 +45,9 @@ export const attendanceRoutes = new Hono<{ Variables: AuthVariables }>()
     }
 
     try {
-      const attendances = await findAttendancesByStudentId(studentId)
+      const attendances = await appRuntime.runPromise(
+        AttendanceRepo.use((repo) => repo.findByStudentId(studentId))
+      )
       return c.json({ data: attendances, count: attendances.length })
     } catch (error) {
       console.error('Error getting student attendance:', error)
@@ -71,7 +62,11 @@ export const attendanceRoutes = new Hono<{ Variables: AuthVariables }>()
     const id = c.req.param('id')
 
     try {
-      const attendance = await findAttendanceById(id)
+      const attendance = await appRuntime.runPromise(
+        AttendanceRepo.use((repo) => repo.findById(id)).pipe(
+          Effect.catchTag('NotFoundError', () => Effect.succeed(null))
+        )
+      )
       if (!attendance) {
         return c.json({ error: 'Attendance record not found' }, 404)
       }
@@ -85,11 +80,13 @@ export const attendanceRoutes = new Hono<{ Variables: AuthVariables }>()
   /**
    * Create new attendance record
    */
-  .post('/', zValidator('json', AttendanceSchema), async (c) => {
+  .post('/', effectValidator('json', AttendanceSchema), async (c) => {
     const data = c.req.valid('json')
 
     try {
-      const attendance = await createAttendance(data)
+      const attendance = await appRuntime.runPromise(
+        AttendanceRepo.use((repo) => repo.create(data))
+      )
       return c.json({ data: attendance }, 201)
     } catch (error) {
       console.error('Error creating attendance record:', error)
@@ -100,12 +97,16 @@ export const attendanceRoutes = new Hono<{ Variables: AuthVariables }>()
   /**
    * Update attendance record
    */
-  .put('/:id', zValidator('json', AttendanceSchema.partial()), async (c) => {
+  .put('/:id', effectValidator('json', AttendanceUpdateSchema), async (c) => {
     const id = c.req.param('id')
     const data = c.req.valid('json')
 
     try {
-      const attendance = await updateAttendance(id, data)
+      const attendance = await appRuntime.runPromise(
+        AttendanceRepo.use((repo) => repo.update(id, data)).pipe(
+          Effect.catchTag('NotFoundError', () => Effect.succeed(null))
+        )
+      )
       if (!attendance) {
         return c.json({ error: 'Attendance record not found' }, 404)
       }
@@ -123,7 +124,9 @@ export const attendanceRoutes = new Hono<{ Variables: AuthVariables }>()
     const id = c.req.param('id')
 
     try {
-      const deleted = await deleteAttendance(id)
+      const deleted = await appRuntime.runPromise(
+        AttendanceRepo.use((repo) => repo.delete(id))
+      )
       if (!deleted) {
         return c.json({ error: 'Attendance record not found' }, 404)
       }

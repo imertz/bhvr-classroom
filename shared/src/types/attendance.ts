@@ -1,43 +1,31 @@
 // shared/src/types/attendance.ts
-import { z } from 'zod'
+import { Schema } from "effect";
 
-/**
- * Main attendance interface
- */
-export interface Attendance {
-  id: string
-  student_id: string
-  class_id: string
-  date: string
-  status: 'present' | 'absent' | 'tardy' | 'excused'
-  notes?: string | null
-  recorded_at: string
-}
+export class Attendance extends Schema.Class<Attendance>("Attendance")({
+  id: Schema.String,
+  student_id: Schema.String,
+  class_id: Schema.String,
+  date: Schema.String,
+  status: Schema.Literals(["present", "absent", "tardy", "excused"]),
+  notes: Schema.optional(Schema.NullOr(Schema.String)),
+  recorded_at: Schema.String,
+}) {}
 
-/**
- * Input type for creating/updating
- */
-export type AttendanceInput = Omit<Attendance, 'id' | 'recorded_at'>
+export class AttendanceInput extends Schema.Class<AttendanceInput>("AttendanceInput")({
+  student_id: Schema.String,
+  class_id: Schema.String,
+  date: Schema.String,
+  status: Schema.Literals(["present", "absent", "tardy", "excused"]),
+  notes: Schema.optional(Schema.NullOr(Schema.String)),
+}) {}
 
-/**
- * Zod schema for validation
- */
-export const AttendanceSchema = z.object({
-  student_id: z.string(),
-  class_id: z.string(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}(?:T.*)?$/, { message: 'Invalid date format' }),
-  status: z.enum(['present', 'absent', 'tardy', 'excused']),
-  notes: z.string().optional().nullable(),
-})
+export const AttendanceSchema = AttendanceInput;
 
-/**
- * Response types
- */
 export interface AttendanceListResponse {
-  data: Attendance[]
-  count: number
+  data: Attendance[];
+  count: number;
 }
 
 export interface AttendanceResponse {
-  data: Attendance
+  data: Attendance;
 }

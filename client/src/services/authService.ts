@@ -1,11 +1,12 @@
-import { client, unwrapJson } from '../lib/api';
-import type {
-  AuthUser,
-  LoginCredentials,
-  RegistrationData,
+import { Effect } from 'effect';
+import { client, unwrapJson, unwrapJsonEffect } from '../lib/api';
+import {
   LoginResponse,
   AuthResponse,
-  RefreshResponse
+  RefreshResponse,
+  type AuthUser,
+  type LoginCredentials,
+  type RegistrationData
 } from 'shared/dist';
 
 export type {
@@ -19,17 +20,31 @@ export type {
 
 export const authService = {
   /**
+   * Effect-based login
+   */
+  loginEffect(credentials: LoginCredentials): Effect.Effect<LoginResponse, Error> {
+    return unwrapJsonEffect<LoginResponse>(client.auth.login.$post({ json: credentials }), LoginResponse);
+  },
+
+  /**
    * Login with email and password (supports teacher, admin, and student)
    */
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
-    return unwrapJson<LoginResponse>(client.auth.login.$post({ json: credentials }));
+    return Effect.runPromise(this.loginEffect(credentials));
+  },
+
+  /**
+   * Effect-based register
+   */
+  registerEffect(data: RegistrationData): Effect.Effect<LoginResponse, Error> {
+    return unwrapJsonEffect<LoginResponse>(client.auth.teacher.register.$post({ json: data }), LoginResponse);
   },
 
   /**
    * Register a new teacher account
    */
   async register(data: RegistrationData): Promise<LoginResponse> {
-    return unwrapJson<LoginResponse>(client.auth.teacher.register.$post({ json: data }));
+    return Effect.runPromise(this.registerEffect(data));
   },
 
   /**
@@ -43,14 +58,18 @@ export const authService = {
    * Get current authenticated user
    */
   async getCurrentUser(): Promise<AuthResponse> {
-    return unwrapJson<AuthResponse>(client.auth.me.$get());
+    return Effect.runPromise(
+      unwrapJsonEffect<AuthResponse>(client.auth.me.$get(), AuthResponse)
+    );
   },
 
   /**
    * Refresh access token using refresh token
    */
   async refreshToken(): Promise<RefreshResponse> {
-    return unwrapJson<RefreshResponse>(client.auth.refresh.$post());
+    return Effect.runPromise(
+      unwrapJsonEffect<RefreshResponse>(client.auth.refresh.$post(), RefreshResponse)
+    );
   },
 };
 

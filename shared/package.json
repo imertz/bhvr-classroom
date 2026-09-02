@@ -8,6 +8,7 @@
     "dev": "tsc --watch"
   },
   "dependencies": {
+    "effect": "4.0.0-rc.112",
     "zod": "^4.5.4"
   },
   "devDependencies": {

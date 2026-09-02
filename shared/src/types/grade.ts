@@ -1,41 +1,29 @@
 // shared/src/types/grade.ts
-import { z } from 'zod'
+import { Schema } from "effect";
 
-/**
- * Main grade interface
- */
-export interface Grade {
-  id: string
-  submission_id: string
-  points_earned: number
-  feedback?: string | null
-  graded_at: string
-  graded_by: string
-}
+export class Grade extends Schema.Class<Grade>("Grade")({
+  id: Schema.String,
+  submission_id: Schema.String,
+  points_earned: Schema.Int,
+  feedback: Schema.optional(Schema.NullOr(Schema.String)),
+  graded_at: Schema.String,
+  graded_by: Schema.String,
+}) {}
 
-/**
- * Input type for creating/updating
- */
-export type GradeInput = Omit<Grade, 'id' | 'graded_at'>
+export class GradeInput extends Schema.Class<GradeInput>("GradeInput")({
+  submission_id: Schema.String,
+  points_earned: Schema.Int,
+  feedback: Schema.optional(Schema.NullOr(Schema.String)),
+  graded_by: Schema.String,
+}) {}
 
-/**
- * Zod schema for validation
- */
-export const GradeSchema = z.object({
-  submission_id: z.string(),
-  points_earned: z.number().int(),
-  feedback: z.string().optional().nullable(),
-  graded_by: z.string(),
-})
+export const GradeSchema = GradeInput;
 
-/**
- * Response types
- */
 export interface GradeListResponse {
-  data: Grade[]
-  count: number
+  data: Grade[];
+  count: number;
 }
 
 export interface GradeResponse {
-  data: Grade
+  data: Grade;
 }

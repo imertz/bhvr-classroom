@@ -69,7 +69,7 @@ export default function StudentFormPage() {
 
       if (isEditing && id) {
         // For updates, only send changed fields
-        const updateData: Partial<StudentInput> = {};
+        const updateData: { -readonly [K in keyof StudentInput]?: StudentInput[K] } = {};
         if (formData.email !== currentStudent?.email) updateData.email = formData.email;
         if (formData.first_name !== currentStudent?.first_name) updateData.first_name = formData.first_name;
         if (formData.last_name !== currentStudent?.last_name) updateData.last_name = formData.last_name;

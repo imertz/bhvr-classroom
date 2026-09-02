@@ -1,25 +1,11 @@
-/**
- * @file assignments.ts
- * @description Handles all assignment-related API endpoints
- * 
- * Endpoints:
- * - GET    /assignments      - List all assignments
- * - GET    /assignments/:id  - Get assignment by ID
- * - POST   /assignments      - Create new assignment
- * - PUT    /assignments/:id  - Update assignment
- * - DELETE /assignments/:id  - Delete assignment
- */
-
 import { Hono } from 'hono'
-import { zValidator } from '@hono/zod-validator'
-import { AssignmentSchema, type AssignmentInput } from 'shared/src/types/assignment'
-import {
-  createAssignment,
-  findAssignmentById,
-  findAllAssignments,
-  updateAssignment,
-  deleteAssignment
-} from '../db/database'
+import { Effect } from 'effect'
+import { AssignmentSchema, AssignmentInput, makePartial } from 'shared/dist'
+import { effectValidator } from '../middleware/validator'
+import { appRuntime } from '../services/AppRuntime'
+import { AssignmentRepo } from '../services/AssignmentRepo'
+
+const AssignmentUpdateSchema = makePartial(AssignmentInput.fields)
 
 export const assignmentRoutes = new Hono()
   /**
@@ -27,7 +13,9 @@ export const assignmentRoutes = new Hono()
    */
   .get('/', async (c) => {
     try {
-      const assignments = await findAllAssignments()
+      const assignments = await appRuntime.runPromise(
+        AssignmentRepo.use((repo) => repo.findAll())
+      )
       return c.json({ data: assignments, count: assignments.length })
     } catch (error) {
       console.error('Error listing assignments:', error)
@@ -42,7 +30,11 @@ export const assignmentRoutes = new Hono()
     const id = c.req.param('id')
 
     try {
-      const assignment = await findAssignmentById(id)
+      const assignment = await appRuntime.runPromise(
+        AssignmentRepo.use((repo) => repo.findById(id)).pipe(
+          Effect.catchTag('NotFoundError', () => Effect.succeed(null))
+        )
+      )
       if (!assignment) {
         return c.json({ error: 'Assignment not found' }, 404)
       }
@@ -56,16 +48,16 @@ export const assignmentRoutes = new Hono()
   /**
    * Create new assignment
    */
-  .post('/', zValidator('json', AssignmentSchema), async (c) => {
+  .post('/', effectValidator('json', AssignmentSchema), async (c) => {
     const data = c.req.valid('json')
 
     try {
-      // map description to string|null
-      const input: AssignmentInput = {
-        ...data,
-        description: data.description ?? null,
-      }
-      const assignment = await createAssignment(input)
+      const assignment = await appRuntime.runPromise(
+        AssignmentRepo.use((repo) => repo.create({
+          ...data,
+          description: data.description ?? null
+        }))
+      )
       return c.json({ data: assignment }, 201)
     } catch (error) {
       console.error('Error creating assignment:', error)
@@ -76,17 +68,16 @@ export const assignmentRoutes = new Hono()
   /**
    * Update assignment
    */
-  .put('/:id', zValidator('json', AssignmentSchema.partial()), async (c) => {
+  .put('/:id', effectValidator('json', AssignmentUpdateSchema), async (c) => {
     const id = c.req.param('id')
     const data = c.req.valid('json')
 
     try {
-      // build a Partial<AssignmentInput>, mapping description only if present
-      const updateData: Partial<AssignmentInput> = { ...data }
-      if ('description' in data) {
-        updateData.description = data.description ?? null
-      }
-      const assignment = await updateAssignment(id, updateData)
+      const assignment = await appRuntime.runPromise(
+        AssignmentRepo.use((repo) => repo.update(id, data)).pipe(
+          Effect.catchTag('NotFoundError', () => Effect.succeed(null))
+        )
+      )
       if (!assignment) {
         return c.json({ error: 'Assignment not found' }, 404)
       }
@@ -104,7 +95,9 @@ export const assignmentRoutes = new Hono()
     const id = c.req.param('id')
 
     try {
-      const deleted = await deleteAssignment(id)
+      const deleted = await appRuntime.runPromise(
+        AssignmentRepo.use((repo) => repo.delete(id))
+      )
       if (!deleted) {
         return c.json({ error: 'Assignment not found' }, 404)
       }

@@ -1,44 +1,32 @@
 // shared/src/types/class.ts
-import { z } from 'zod'
+import { Schema } from "effect";
 
-/**
- * Main class interface
- */
-export interface Class {
-  id: string
-  name: string
-  subject: string
-  teacher_id: string
-  room_number?: string | null
-  schedule?: string | null // JSON string
-  created_at: string
-  updated_at: string
-}
+export class Class extends Schema.Class<Class>("Class")({
+  id: Schema.String,
+  name: Schema.String,
+  subject: Schema.String,
+  teacher_id: Schema.String,
+  room_number: Schema.optional(Schema.NullOr(Schema.String)),
+  schedule: Schema.optional(Schema.NullOr(Schema.String)),
+  created_at: Schema.String,
+  updated_at: Schema.String,
+}) {}
 
-/**
- * Input type for creating/updating
- */
-export type ClassInput = Omit<Class, 'id' | 'created_at' | 'updated_at'>
+export class ClassInput extends Schema.Class<ClassInput>("ClassInput")({
+  name: Schema.String,
+  subject: Schema.String,
+  teacher_id: Schema.String,
+  room_number: Schema.optional(Schema.NullOr(Schema.String)),
+  schedule: Schema.optional(Schema.NullOr(Schema.String)),
+}) {}
 
-/**
- * Zod schema for validation
- */
-export const ClassSchema = z.object({
-  name: z.string(),
-  subject: z.string(),
-  teacher_id: z.string(),
-  room_number: z.string().optional().nullable(),
-  schedule: z.string().optional().nullable(),
-})
+export const ClassSchema = ClassInput;
 
-/**
- * Response types
- */
 export interface ClassListResponse {
-  data: Class[]
-  count: number
+  data: Class[];
+  count: number;
 }
 
 export interface ClassResponse {
-  data: Class
+  data: Class;
 }

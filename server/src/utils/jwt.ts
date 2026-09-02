@@ -1,31 +1,19 @@
-import { sign } from 'hono/jwt'
-import type { AccessTokenPayload, RefreshTokenPayload, AuthUser } from '../types/auth'
-import { AUTH_CONFIG } from '../config/auth'
+import type { AuthUser } from "shared/dist";
+import { appRuntime } from "../services/AppRuntime";
+import { AuthService } from "../services/AuthService";
 
 export async function generateAccessToken(user: AuthUser): Promise<string> {
-  const payload: AccessTokenPayload = {
-    user,
-    type: 'access',
-    exp: Math.floor(Date.now() / 1000) + (15 * 60), // 15 minutes
-    iat: Math.floor(Date.now() / 1000)
-  }
-
-  return await sign(payload, AUTH_CONFIG.ACCESS_TOKEN_SECRET)
+  return appRuntime.runPromise(
+    AuthService.use((auth) => auth.generateAccessToken(user))
+  );
 }
 
 export async function generateRefreshToken(
   userId: string,
-  userType: 'teacher' | 'student',
+  userType: "teacher" | "student",
   tokenId: string
 ): Promise<string> {
-  const payload: RefreshTokenPayload = {
-    userId,
-    userType,
-    tokenId,
-    type: 'refresh',
-    exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // 7 days
-    iat: Math.floor(Date.now() / 1000)
-  }
-
-  return await sign(payload, AUTH_CONFIG.REFRESH_TOKEN_SECRET)
+  return appRuntime.runPromise(
+    AuthService.use((auth) => auth.generateRefreshToken(userId, userType, tokenId))
+  );
 }

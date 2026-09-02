@@ -1,27 +1,12 @@
-/**
- * @file grades.ts
- * @description Handles all grade-related API endpoints
- * 
- * Endpoints:
- * - GET    /grades      - List all grades
- * - GET    /grades/:id  - Get grade by ID
- * - POST   /grades      - Create new grade
- * - PUT    /grades/:id  - Update grade
- * - DELETE /grades/:id  - Delete grade
- */
-
 import { Hono } from 'hono'
-import { zValidator } from '@hono/zod-validator'
-import { GradeSchema } from 'shared/src/types/grade'
+import { Effect } from 'effect'
+import { GradeSchema, GradeInput, makePartial } from 'shared/dist'
 import type { AuthVariables } from '../types/auth'
-import {
-  createGrade,
-  findGradeById,
-  findAllGrades,
-  findGradesByStudentId,
-  updateGrade,
-  deleteGrade
-} from '../db/database'
+import { effectValidator } from '../middleware/validator'
+import { appRuntime } from '../services/AppRuntime'
+import { GradeRepo } from '../services/GradeRepo'
+
+const GradeUpdateSchema = makePartial(GradeInput.fields)
 
 export const gradeRoutes = new Hono<{ Variables: AuthVariables }>()
   /**
@@ -32,11 +17,15 @@ export const gradeRoutes = new Hono<{ Variables: AuthVariables }>()
 
     try {
       if (user?.role === 'student') {
-        const grades = await findGradesByStudentId(user.id)
+        const grades = await appRuntime.runPromise(
+          GradeRepo.use((repo) => repo.findByStudentId(user.id))
+        )
         return c.json({ data: grades, count: grades.length })
       }
 
-      const grades = await findAllGrades()
+      const grades = await appRuntime.runPromise(
+        GradeRepo.use((repo) => repo.findAll())
+      )
       return c.json({ data: grades, count: grades.length })
     } catch (error) {
       console.error('Error listing grades:', error)
@@ -56,7 +45,9 @@ export const gradeRoutes = new Hono<{ Variables: AuthVariables }>()
     }
 
     try {
-      const grades = await findGradesByStudentId(studentId)
+      const grades = await appRuntime.runPromise(
+        GradeRepo.use((repo) => repo.findByStudentId(studentId))
+      )
       return c.json({ data: grades, count: grades.length })
     } catch (error) {
       console.error('Error getting student grades:', error)
@@ -71,7 +62,11 @@ export const gradeRoutes = new Hono<{ Variables: AuthVariables }>()
     const id = c.req.param('id')
 
     try {
-      const grade = await findGradeById(id)
+      const grade = await appRuntime.runPromise(
+        GradeRepo.use((repo) => repo.findById(id)).pipe(
+          Effect.catchTag('NotFoundError', () => Effect.succeed(null))
+        )
+      )
       if (!grade) {
         return c.json({ error: 'Grade not found' }, 404)
       }
@@ -85,11 +80,13 @@ export const gradeRoutes = new Hono<{ Variables: AuthVariables }>()
   /**
    * Create new grade
    */
-  .post('/', zValidator('json', GradeSchema), async (c) => {
+  .post('/', effectValidator('json', GradeSchema), async (c) => {
     const data = c.req.valid('json')
 
     try {
-      const grade = await createGrade(data)
+      const grade = await appRuntime.runPromise(
+        GradeRepo.use((repo) => repo.create(data))
+      )
       return c.json({ data: grade }, 201)
     } catch (error) {
       console.error('Error creating grade:', error)
@@ -100,12 +97,16 @@ export const gradeRoutes = new Hono<{ Variables: AuthVariables }>()
   /**
    * Update grade
    */
-  .put('/:id', zValidator('json', GradeSchema.partial()), async (c) => {
+  .put('/:id', effectValidator('json', GradeUpdateSchema), async (c) => {
     const id = c.req.param('id')
     const data = c.req.valid('json')
 
     try {
-      const grade = await updateGrade(id, data)
+      const grade = await appRuntime.runPromise(
+        GradeRepo.use((repo) => repo.update(id, data)).pipe(
+          Effect.catchTag('NotFoundError', () => Effect.succeed(null))
+        )
+      )
       if (!grade) {
         return c.json({ error: 'Grade not found' }, 404)
       }
@@ -123,7 +124,9 @@ export const gradeRoutes = new Hono<{ Variables: AuthVariables }>()
     const id = c.req.param('id')
 
     try {
-      const deleted = await deleteGrade(id)
+      const deleted = await appRuntime.runPromise(
+        GradeRepo.use((repo) => repo.delete(id))
+      )
       if (!deleted) {
         return c.json({ error: 'Grade not found' }, 404)
       }

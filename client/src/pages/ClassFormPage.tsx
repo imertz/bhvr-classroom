@@ -68,7 +68,7 @@ export default function ClassFormPage() {
       };
 
       if (isEditing && id) {
-        const updateData: Partial<ClassInput> = {};
+        const updateData: { -readonly [K in keyof ClassInput]?: ClassInput[K] } = {};
         if (formData.name !== currentClass?.name) updateData.name = formData.name;
         if (formData.subject !== currentClass?.subject) updateData.subject = formData.subject;
         if (formData.teacher_id !== currentClass?.teacher_id) updateData.teacher_id = formData.teacher_id;

@@ -1,4 +1,5 @@
 import { hc } from 'hono/client';
+import { Schema, Effect } from 'effect';
 import type { AppType } from 'server/src/client';
 import { useAuthStore } from '../stores/authStore';
 
@@ -145,5 +146,20 @@ export async function unwrapJson<T>(
   return res.json() as Promise<T>;
 }
 
-export default client;
+export function unwrapJsonEffect<T>(
+  resPromise: Promise<ApiResponseLike>,
+  schema?: Schema.Decoder<T>
+): Effect.Effect<T, Error> {
+  return Effect.tryPromise({
+    try: async () => {
+      const data = await unwrapJson<T>(resPromise);
+      if (schema) {
+        return Schema.decodeUnknownSync(schema)(data);
+      }
+      return data;
+    },
+    catch: (error) => error instanceof Error ? error : new Error(String(error))
+  });
+}
 
+export default client;

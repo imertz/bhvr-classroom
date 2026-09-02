@@ -1,25 +1,11 @@
-/**
- * @file submissions.ts
- * @description Handles all submission-related API endpoints
- * 
- * Endpoints:
- * - GET    /submissions      - List all submissions
- * - GET    /submissions/:id  - Get submission by ID
- * - POST   /submissions      - Create new submission
- * - PUT    /submissions/:id  - Update submission
- * - DELETE /submissions/:id  - Delete submission
- */
-
 import { Hono } from 'hono'
-import { zValidator } from '@hono/zod-validator'
-import { SubmissionSchema } from 'shared/src/types/submission'
-import {
-  createSubmission,
-  findSubmissionById,
-  findAllSubmissions,
-  updateSubmission,
-  deleteSubmission
-} from '../db/database'
+import { Effect } from 'effect'
+import { SubmissionSchema, SubmissionInput, makePartial } from 'shared/dist'
+import { effectValidator } from '../middleware/validator'
+import { appRuntime } from '../services/AppRuntime'
+import { SubmissionRepo } from '../services/SubmissionRepo'
+
+const SubmissionUpdateSchema = makePartial(SubmissionInput.fields)
 
 export const submissionRoutes = new Hono()
   /**
@@ -27,7 +13,9 @@ export const submissionRoutes = new Hono()
    */
   .get('/', async (c) => {
     try {
-      const submissions = await findAllSubmissions()
+      const submissions = await appRuntime.runPromise(
+        SubmissionRepo.use((repo) => repo.findAll())
+      )
       return c.json({ data: submissions, count: submissions.length })
     } catch (error) {
       console.error('Error listing submissions:', error)
@@ -42,7 +30,11 @@ export const submissionRoutes = new Hono()
     const id = c.req.param('id')
 
     try {
-      const submission = await findSubmissionById(id)
+      const submission = await appRuntime.runPromise(
+        SubmissionRepo.use((repo) => repo.findById(id)).pipe(
+          Effect.catchTag('NotFoundError', () => Effect.succeed(null))
+        )
+      )
       if (!submission) {
         return c.json({ error: 'Submission not found' }, 404)
       }
@@ -56,11 +48,13 @@ export const submissionRoutes = new Hono()
   /**
    * Create new submission
    */
-  .post('/', zValidator('json', SubmissionSchema), async (c) => {
+  .post('/', effectValidator('json', SubmissionSchema), async (c) => {
     const data = c.req.valid('json')
 
     try {
-      const submission = await createSubmission(data)
+      const submission = await appRuntime.runPromise(
+        SubmissionRepo.use((repo) => repo.create(data))
+      )
       return c.json({ data: submission }, 201)
     } catch (error) {
       console.error('Error creating submission:', error)
@@ -71,12 +65,16 @@ export const submissionRoutes = new Hono()
   /**
    * Update submission
    */
-  .put('/:id', zValidator('json', SubmissionSchema.partial()), async (c) => {
+  .put('/:id', effectValidator('json', SubmissionUpdateSchema), async (c) => {
     const id = c.req.param('id')
     const data = c.req.valid('json')
 
     try {
-      const submission = await updateSubmission(id, data)
+      const submission = await appRuntime.runPromise(
+        SubmissionRepo.use((repo) => repo.update(id, data)).pipe(
+          Effect.catchTag('NotFoundError', () => Effect.succeed(null))
+        )
+      )
       if (!submission) {
         return c.json({ error: 'Submission not found' }, 404)
       }
@@ -94,7 +92,9 @@ export const submissionRoutes = new Hono()
     const id = c.req.param('id')
 
     try {
-      const deleted = await deleteSubmission(id)
+      const deleted = await appRuntime.runPromise(
+        SubmissionRepo.use((repo) => repo.delete(id))
+      )
       if (!deleted) {
         return c.json({ error: 'Submission not found' }, 404)
       }

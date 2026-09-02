@@ -1,48 +1,35 @@
 // shared/src/types/student.ts
-import { z } from 'zod'
+import { Schema } from "effect";
 
-/**
- * Main student interface
- */
-export interface Student {
-  id: string
-  email: string
-  first_name: string
-  last_name: string
-  date_of_birth: string
-  grade_level: number
-  role?: 'student'
-  created_at: string
-  updated_at: string
-}
+export class Student extends Schema.Class<Student>("Student")({
+  id: Schema.String,
+  email: Schema.String,
+  first_name: Schema.String,
+  last_name: Schema.String,
+  date_of_birth: Schema.String,
+  grade_level: Schema.Int,
+  role: Schema.optional(Schema.Literal("student")),
+  created_at: Schema.String,
+  updated_at: Schema.String,
+}) {}
 
-/**
- * Input type for creating/updating
- */
-export type StudentInput = Omit<Student, 'id' | 'created_at' | 'updated_at'> & {
-  password?: string;
-}
+export class StudentInput extends Schema.Class<StudentInput>("StudentInput")({
+  email: Schema.String,
+  first_name: Schema.String,
+  last_name: Schema.String,
+  date_of_birth: Schema.String,
+  grade_level: Schema.Int,
+  role: Schema.optional(Schema.Literal("student")),
+  password: Schema.optional(Schema.String),
+}) {}
 
-/**
- * Zod schema for validation
- */
-export const StudentSchema = z.object({
-  email: z.string().email(),
-  first_name: z.string().min(1),
-  last_name: z.string().min(1),
-  date_of_birth: z.string().regex(/^\d{4}-\d{2}-\d{2}(?:T.*)?$/, { message: 'Invalid date format' }),
-  grade_level: z.number().int(),
-  password: z.string().min(8).optional(),
-})
+export const StudentSchema = StudentInput;
 
-/**
- * Response types
- */
 export interface StudentListResponse {
-  data: Student[]
-  count: number
+  data: Student[];
+  count: number;
 }
 
 export interface StudentResponse {
-  data: Student
+  data: Student;
 }

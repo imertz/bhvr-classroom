@@ -1,197 +1,230 @@
 import { Hono } from 'hono'
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
-import { z } from 'zod'
-import type { AuthVariables, AuthUser, RefreshTokenPayload } from '../types/auth'
-import { findTeacherByEmail, findStudentByEmail, storeRefreshToken, findRefreshTokenById, revokeRefreshToken, findTeacherById, findStudentById, createTeacher } from '../db/database'
-import { TeacherRegistrationSchema } from 'shared/src/types/teacher'
-import { generateAccessToken, generateRefreshToken } from '../utils/jwt'
+import { Effect } from 'effect'
+import { randomUUIDv7 as randomUUID } from 'bun'
+import type { AuthVariables, AuthUser } from '../types/auth'
+import {
+  LoginCredentials,
+  TeacherRegistrationSchema
+} from 'shared/dist'
+import { effectValidator } from '../middleware/validator'
+import { appRuntime } from '../services/AppRuntime'
+import { TeacherRepo } from '../services/TeacherRepo'
+import { StudentRepo } from '../services/StudentRepo'
+import { AuthRepo } from '../services/AuthRepo'
+import { AuthService } from '../services/AuthService'
 import { AUTH_CONFIG } from '../config/auth'
-import { randomUUID } from 'crypto'
-import { verify } from 'hono/jwt'
 import { authMiddleware } from '../middleware/auth'
-
-const LoginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8)
-})
 
 export const authRoutes = new Hono<{ Variables: AuthVariables }>()
   // Unified login (auto-detects teacher vs student)
-  .post('/login', async (c) => {
-    const body = await c.req.json()
-    const { email, password } = LoginSchema.parse(body)
+  .post('/login', effectValidator('json', LoginCredentials), async (c) => {
+    const { email, password } = c.req.valid('json')
 
-    // Try teacher/admin first
-    const teacher = await findTeacherByEmail(email)
-    if (teacher && teacher.password_hash) {
-      const isValid = await Bun.password.verify(password, teacher.password_hash)
-      if (isValid) {
-        const user: AuthUser = {
-          id: teacher.id,
-          email: teacher.email,
-          firstName: teacher.first_name,
-          lastName: teacher.last_name,
-          role: teacher.role || 'teacher',
-          userType: 'teacher'
+    const program = Effect.gen(function*() {
+      const teacherRepo = yield* TeacherRepo
+      const studentRepo = yield* StudentRepo
+      const authRepo = yield* AuthRepo
+      const authService = yield* AuthService
+
+      // 1. Try teacher/admin
+      const teacher = yield* teacherRepo.findByEmail(email)
+      if (teacher && teacher.password_hash) {
+        const isValid = yield* Effect.tryPromise(() => Bun.password.verify(password, teacher.password_hash))
+        if (isValid) {
+          const user: AuthUser = {
+            id: teacher.id,
+            email: teacher.email,
+            firstName: teacher.first_name,
+            lastName: teacher.last_name,
+            role: teacher.role || 'teacher',
+            userType: 'teacher'
+          }
+
+          const accessToken = yield* authService.generateAccessToken(user)
+          const refreshTokenId = randomUUID()
+          const refreshToken = yield* authService.generateRefreshToken(teacher.id, 'teacher', refreshTokenId)
+          const hashedRefreshToken = yield* Effect.tryPromise(() => Bun.password.hash(refreshToken))
+
+          yield* authRepo.storeRefreshToken({
+            id: refreshTokenId,
+            user_id: teacher.id,
+            user_type: 'teacher',
+            token_hash: hashedRefreshToken,
+            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+          })
+
+          return { user, accessToken, refreshToken }
         }
-
-        const accessToken = await generateAccessToken(user)
-        const refreshTokenId = randomUUID()
-        const refreshToken = await generateRefreshToken(teacher.id, 'teacher', refreshTokenId)
-
-        const hashedRefreshToken = await Bun.password.hash(refreshToken)
-        await storeRefreshToken({
-          id: refreshTokenId,
-          user_id: teacher.id,
-          user_type: 'teacher',
-          token_hash: hashedRefreshToken,
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-        })
-
-        setCookie(c, 'refresh_token', refreshToken, AUTH_CONFIG.COOKIE_OPTIONS)
-
-        return c.json({ user, accessToken })
       }
+
+      // 2. Try student
+      const student = yield* studentRepo.findByEmail(email)
+      if (student && student.password_hash) {
+        const isValid = yield* Effect.tryPromise(() => Bun.password.verify(password, student.password_hash!))
+        if (isValid) {
+          const user: AuthUser = {
+            id: student.id,
+            email: student.email,
+            firstName: student.first_name,
+            lastName: student.last_name,
+            role: 'student',
+            userType: 'student',
+            gradeLevel: student.grade_level
+          }
+
+          const accessToken = yield* authService.generateAccessToken(user)
+          const refreshTokenId = randomUUID()
+          const refreshToken = yield* authService.generateRefreshToken(student.id, 'student', refreshTokenId)
+          const hashedRefreshToken = yield* Effect.tryPromise(() => Bun.password.hash(refreshToken))
+
+          yield* authRepo.storeRefreshToken({
+            id: refreshTokenId,
+            user_id: student.id,
+            user_type: 'student',
+            token_hash: hashedRefreshToken,
+            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+          })
+
+          return { user, accessToken, refreshToken }
+        }
+      }
+
+      return null
+    })
+
+    const result = await appRuntime.runPromise(program)
+    if (!result) {
+      return c.json({ error: 'Invalid credentials' }, 401)
     }
 
-    // Try student
-    const student = await findStudentByEmail(email)
-    if (student && student.password_hash) {
-      const isValid = await Bun.password.verify(password, student.password_hash)
-      if (isValid) {
-        const user: AuthUser = {
-          id: student.id,
-          email: student.email,
-          firstName: student.first_name,
-          lastName: student.last_name,
-          role: 'student',
-          userType: 'student',
-          gradeLevel: student.grade_level
-        }
-
-        const accessToken = await generateAccessToken(user)
-        const refreshTokenId = randomUUID()
-        const refreshToken = await generateRefreshToken(student.id, 'student', refreshTokenId)
-
-        const hashedRefreshToken = await Bun.password.hash(refreshToken)
-        await storeRefreshToken({
-          id: refreshTokenId,
-          user_id: student.id,
-          user_type: 'student',
-          token_hash: hashedRefreshToken,
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-        })
-
-        setCookie(c, 'refresh_token', refreshToken, AUTH_CONFIG.COOKIE_OPTIONS)
-
-        return c.json({ user, accessToken })
-      }
-    }
-
-    return c.json({ error: 'Invalid credentials' }, 401)
+    setCookie(c, 'refresh_token', result.refreshToken, AUTH_CONFIG.COOKIE_OPTIONS)
+    return c.json({ user: result.user, accessToken: result.accessToken })
   })
 
   // Teacher login
-  .post('/teacher/login', async (c) => {
-    const body = await c.req.json()
-    const { email, password } = LoginSchema.parse(body)
+  .post('/teacher/login', effectValidator('json', LoginCredentials), async (c) => {
+    const { email, password } = c.req.valid('json')
 
-    const teacher = await findTeacherByEmail(email)
-    if (!teacher || !teacher.password_hash) {
-      return c.json({ error: 'Invalid credentials' }, 401)
-    }
+    const program = Effect.gen(function*() {
+      const teacherRepo = yield* TeacherRepo
+      const authRepo = yield* AuthRepo
+      const authService = yield* AuthService
 
-    const isValid = await Bun.password.verify(password, teacher.password_hash)
-    if (!isValid) {
-      return c.json({ error: 'Invalid credentials' }, 401)
-    }
+      const teacher = yield* teacherRepo.findByEmail(email)
+      if (!teacher || !teacher.password_hash) {
+        return null
+      }
 
-    const user: AuthUser = {
-      id: teacher.id,
-      email: teacher.email,
-      firstName: teacher.first_name,
-      lastName: teacher.last_name,
-      role: teacher.role || 'teacher',
-      userType: 'teacher'
-    }
+      const isValid = yield* Effect.tryPromise(() => Bun.password.verify(password, teacher.password_hash))
+      if (!isValid) {
+        return null
+      }
 
-    const accessToken = await generateAccessToken(user)
-    const refreshTokenId = randomUUID()
-    const refreshToken = await generateRefreshToken(teacher.id, 'teacher', refreshTokenId)
-
-    const hashedRefreshToken = await Bun.password.hash(refreshToken)
-    await storeRefreshToken({
-      id: refreshTokenId,
-      user_id: teacher.id,
-      user_type: 'teacher',
-      token_hash: hashedRefreshToken,
-      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-    })
-
-    setCookie(c, 'refresh_token', refreshToken, AUTH_CONFIG.COOKIE_OPTIONS)
-
-    return c.json({
-      user: {
+      const user: AuthUser = {
         id: teacher.id,
         email: teacher.email,
         firstName: teacher.first_name,
         lastName: teacher.last_name,
-        role: teacher.role || 'teacher'
+        role: teacher.role || 'teacher',
+        userType: 'teacher'
+      }
+
+      const accessToken = yield* authService.generateAccessToken(user)
+      const refreshTokenId = randomUUID()
+      const refreshToken = yield* authService.generateRefreshToken(teacher.id, 'teacher', refreshTokenId)
+      const hashedRefreshToken = yield* Effect.tryPromise(() => Bun.password.hash(refreshToken))
+
+      yield* authRepo.storeRefreshToken({
+        id: refreshTokenId,
+        user_id: teacher.id,
+        user_type: 'teacher',
+        token_hash: hashedRefreshToken,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      })
+
+      return { user, accessToken, refreshToken, teacher }
+    })
+
+    const result = await appRuntime.runPromise(program)
+    if (!result) {
+      return c.json({ error: 'Invalid credentials' }, 401)
+    }
+
+    setCookie(c, 'refresh_token', result.refreshToken, AUTH_CONFIG.COOKIE_OPTIONS)
+    return c.json({
+      user: {
+        id: result.teacher.id,
+        email: result.teacher.email,
+        firstName: result.teacher.first_name,
+        lastName: result.teacher.last_name,
+        role: result.teacher.role || 'teacher'
       },
-      accessToken
+      accessToken: result.accessToken
     })
   })
 
   // Student login
-  .post('/student/login', async (c) => {
-    const body = await c.req.json()
-    const { email, password } = LoginSchema.parse(body)
+  .post('/student/login', effectValidator('json', LoginCredentials), async (c) => {
+    const { email, password } = c.req.valid('json')
 
-    const student = await findStudentByEmail(email)
-    if (!student || !student.password_hash) {
-      return c.json({ error: 'Invalid credentials' }, 401)
-    }
+    const program = Effect.gen(function*() {
+      const studentRepo = yield* StudentRepo
+      const authRepo = yield* AuthRepo
+      const authService = yield* AuthService
 
-    const isValid = await Bun.password.verify(password, student.password_hash)
-    if (!isValid) {
-      return c.json({ error: 'Invalid credentials' }, 401)
-    }
+      const student = yield* studentRepo.findByEmail(email)
+      if (!student || !student.password_hash) {
+        return null
+      }
 
-    const user: AuthUser = {
-      id: student.id,
-      email: student.email,
-      firstName: student.first_name,
-      lastName: student.last_name,
-      role: 'student',
-      userType: 'student',
-      gradeLevel: student.grade_level
-    }
+      const isValid = yield* Effect.tryPromise(() => Bun.password.verify(password, student.password_hash!))
+      if (!isValid) {
+        return null
+      }
 
-    const accessToken = await generateAccessToken(user)
-    const refreshTokenId = randomUUID()
-    const refreshToken = await generateRefreshToken(student.id, 'student', refreshTokenId)
-
-    const hashedRefreshToken = await Bun.password.hash(refreshToken)
-    await storeRefreshToken({
-      id: refreshTokenId,
-      user_id: student.id,
-      user_type: 'student',
-      token_hash: hashedRefreshToken,
-      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-    })
-
-    setCookie(c, 'refresh_token', refreshToken, AUTH_CONFIG.COOKIE_OPTIONS)
-
-    return c.json({
-      user: {
+      const user: AuthUser = {
         id: student.id,
         email: student.email,
         firstName: student.first_name,
         lastName: student.last_name,
         role: 'student',
+        userType: 'student',
         gradeLevel: student.grade_level
+      }
+
+      const accessToken = yield* authService.generateAccessToken(user)
+      const refreshTokenId = randomUUID()
+      const refreshToken = yield* authService.generateRefreshToken(student.id, 'student', refreshTokenId)
+      const hashedRefreshToken = yield* Effect.tryPromise(() => Bun.password.hash(refreshToken))
+
+      yield* authRepo.storeRefreshToken({
+        id: refreshTokenId,
+        user_id: student.id,
+        user_type: 'student',
+        token_hash: hashedRefreshToken,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      })
+
+      return { user, accessToken, refreshToken, student }
+    })
+
+    const result = await appRuntime.runPromise(program)
+    if (!result) {
+      return c.json({ error: 'Invalid credentials' }, 401)
+    }
+
+    setCookie(c, 'refresh_token', result.refreshToken, AUTH_CONFIG.COOKIE_OPTIONS)
+    return c.json({
+      user: {
+        id: result.student.id,
+        email: result.student.email,
+        firstName: result.student.first_name,
+        lastName: result.student.last_name,
+        role: 'student',
+        gradeLevel: result.student.grade_level
       },
-      accessToken
+      accessToken: result.accessToken
     })
   })
 
@@ -202,32 +235,31 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
       return c.json({ error: 'No refresh token provided' }, 401)
     }
 
-    try {
-      // Verify refresh token
-      // SAFETY: verify validates and parses the JWT token with REFRESH_TOKEN_SECRET into RefreshTokenPayload
-      const payload = (await verify(refreshToken, AUTH_CONFIG.REFRESH_TOKEN_SECRET, 'HS256')) as RefreshTokenPayload
+    const program = Effect.gen(function*() {
+      const authService = yield* AuthService
+      const authRepo = yield* AuthRepo
+      const teacherRepo = yield* TeacherRepo
+      const studentRepo = yield* StudentRepo
 
+      const payload = yield* authService.verifyRefreshToken(refreshToken)
       if (payload.type !== 'refresh') {
-        throw new Error('Invalid token type')
+        return null
       }
 
-      // Check if token exists and is valid
-      const storedToken = await findRefreshTokenById(payload.tokenId)
+      const storedToken = yield* authRepo.findRefreshTokenByIdOrNull(payload.tokenId)
       if (!storedToken || storedToken.revoked_at) {
-        throw new Error('Token revoked or not found')
+        return null
       }
 
-      // Verify the token hash
-      const isValidToken = await Bun.password.verify(refreshToken, storedToken.token_hash)
+      const isValidToken = yield* Effect.tryPromise(() => Bun.password.verify(refreshToken, storedToken.token_hash))
       if (!isValidToken) {
-        throw new Error('Invalid token')
+        return null
       }
 
-      // Get user
       let user: AuthUser
       if (payload.userType === 'teacher') {
-        const teacher = await findTeacherById(payload.userId)
-        if (!teacher) throw new Error('User not found')
+        const teacher = yield* teacherRepo.findByIdOrNull(payload.userId)
+        if (!teacher) return null
         user = {
           id: teacher.id,
           email: teacher.email,
@@ -235,8 +267,8 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
           userType: 'teacher'
         }
       } else {
-        const student = await findStudentById(payload.userId)
-        if (!student) throw new Error('User not found')
+        const student = yield* studentRepo.findByIdOrNull(payload.userId)
+        if (!student) return null
         user = {
           id: student.id,
           email: student.email,
@@ -245,10 +277,16 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
         }
       }
 
-      // Generate new access token
-      const accessToken = await generateAccessToken(user)
+      const accessToken = yield* authService.generateAccessToken(user)
+      return { accessToken, user }
+    })
 
-      return c.json({ accessToken, user })
+    try {
+      const result = await appRuntime.runPromise(program)
+      if (!result) {
+        return c.json({ error: 'Invalid refresh token' }, 401)
+      }
+      return c.json(result)
     } catch {
       return c.json({ error: 'Invalid refresh token' }, 401)
     }
@@ -258,53 +296,64 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
   .get('/me', authMiddleware, async (c) => {
     const user = c.get('user')
 
-    if (user.userType === 'teacher') {
-      const teacher = await findTeacherById(user.id)
-      if (!teacher) return c.json({ error: 'Teacher not found' }, 404)
-      return c.json({
-        user: {
-          id: teacher.id,
-          email: teacher.email,
-          firstName: teacher.first_name,
-          lastName: teacher.last_name,
-          role: teacher.role || 'teacher'
+    const program = Effect.gen(function*() {
+      const teacherRepo = yield* TeacherRepo
+      const studentRepo = yield* StudentRepo
+
+      if (user.userType === 'teacher') {
+        const teacher = yield* teacherRepo.findByIdOrNull(user.id)
+        if (!teacher) return null
+        return {
+          user: {
+            id: teacher.id,
+            email: teacher.email,
+            firstName: teacher.first_name,
+            lastName: teacher.last_name,
+            role: teacher.role || 'teacher'
+          }
         }
-      })
-    } else {
-      const student = await findStudentById(user.id)
-      if (!student) return c.json({ error: 'Student not found' }, 404)
-      return c.json({
-        user: {
-          id: student.id,
-          email: student.email,
-          firstName: student.first_name,
-          lastName: student.last_name,
-          role: 'student',
-          gradeLevel: student.grade_level
+      } else {
+        const student = yield* studentRepo.findByIdOrNull(user.id)
+        if (!student) return null
+        return {
+          user: {
+            id: student.id,
+            email: student.email,
+            firstName: student.first_name,
+            lastName: student.last_name,
+            role: 'student',
+            gradeLevel: student.grade_level
+          }
         }
-      })
+      }
+    })
+
+    const result = await appRuntime.runPromise(program)
+    if (!result) {
+      return c.json({ error: user.userType === 'teacher' ? 'Teacher not found' : 'Student not found' }, 404)
     }
+    return c.json(result)
   })
 
   // Teacher registration
-  .post('/teacher/register', async (c) => {
-    try {
-      const body = await c.req.json()
-      const registrationData = TeacherRegistrationSchema.parse(body)
+  .post('/teacher/register', effectValidator('json', TeacherRegistrationSchema), async (c) => {
+    const registrationData = c.req.valid('json')
 
-      // Check if teacher already exists
-      const existingTeacher = await findTeacherByEmail(registrationData.email)
+    const program = Effect.gen(function*() {
+      const teacherRepo = yield* TeacherRepo
+      const authRepo = yield* AuthRepo
+      const authService = yield* AuthService
+
+      const existingTeacher = yield* teacherRepo.findByEmail(registrationData.email)
       if (existingTeacher) {
-        return c.json({ error: 'Email already exists' }, 409)
+        return { status: 409 as const, error: 'Email already exists' }
       }
 
-      // Create teacher
-      const teacher = await createTeacher({
+      const teacher = yield* teacherRepo.create({
         ...registrationData,
         role: 'teacher'
       })
 
-      // Generate tokens for auto-login
       const user: AuthUser = {
         id: teacher.id,
         email: teacher.email,
@@ -312,13 +361,12 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
         userType: 'teacher'
       }
 
-      const accessToken = await generateAccessToken(user)
+      const accessToken = yield* authService.generateAccessToken(user)
       const refreshTokenId = randomUUID()
-      const refreshToken = await generateRefreshToken(teacher.id, 'teacher', refreshTokenId)
+      const refreshToken = yield* authService.generateRefreshToken(teacher.id, 'teacher', refreshTokenId)
+      const hashedRefreshToken = yield* Effect.tryPromise(() => Bun.password.hash(refreshToken))
 
-      // Store refresh token (hashed)
-      const hashedRefreshToken = await Bun.password.hash(refreshToken)
-      await storeRefreshToken({
+      yield* authRepo.storeRefreshToken({
         id: refreshTokenId,
         user_id: teacher.id,
         user_type: 'teacher',
@@ -326,23 +374,34 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
       })
 
-      // Set refresh token as httpOnly cookie
-      setCookie(c, 'refresh_token', refreshToken, AUTH_CONFIG.COOKIE_OPTIONS)
+      return {
+        status: 201 as const,
+        data: {
+          user: {
+            id: teacher.id,
+            email: teacher.email,
+            firstName: teacher.first_name,
+            lastName: teacher.last_name,
+            role: 'teacher'
+          },
+          accessToken,
+          refreshToken
+        }
+      }
+    })
 
+    try {
+      const result = await appRuntime.runPromise(program)
+      if ('error' in result) {
+        return c.json({ error: result.error }, result.status)
+      }
+
+      setCookie(c, 'refresh_token', result.data.refreshToken, AUTH_CONFIG.COOKIE_OPTIONS)
       return c.json({
-        user: {
-          id: teacher.id,
-          email: teacher.email,
-          firstName: teacher.first_name,
-          lastName: teacher.last_name,
-          role: 'teacher'
-        },
-        accessToken
+        user: result.data.user,
+        accessToken: result.data.accessToken
       }, 201)
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return c.json({ error: 'Validation failed', details: error.issues }, 400)
-      }
       console.error('Registration error:', error)
       return c.json({ error: 'Registration failed' }, 500)
     }
@@ -353,14 +412,14 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
     const refreshToken = getCookie(c, 'refresh_token')
 
     if (refreshToken) {
-      // Revoke refresh token in database
-      try {
-        // SAFETY: verify validates and parses the JWT token with REFRESH_TOKEN_SECRET into RefreshTokenPayload
-        const payload = (await verify(refreshToken, AUTH_CONFIG.REFRESH_TOKEN_SECRET, 'HS256')) as RefreshTokenPayload
-        await revokeRefreshToken(payload.tokenId)
-      } catch {
-        // Token might be invalid, but we still want to clear the cookie
-      }
+      const program = Effect.gen(function*() {
+        const authService = yield* AuthService
+        const authRepo = yield* AuthRepo
+        const payload = yield* authService.verifyRefreshToken(refreshToken)
+        yield* authRepo.revokeRefreshToken(payload.tokenId)
+      })
+
+      await appRuntime.runPromise(program.pipe(Effect.catch(() => Effect.void)))
     }
 
     deleteCookie(c, 'refresh_token')

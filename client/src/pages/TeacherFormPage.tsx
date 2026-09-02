@@ -62,7 +62,7 @@ export default function TeacherFormPage() {
     try {
       if (isEditing && id) {
         // For updates, only send changed fields and don't require password
-        const updateData: Partial<TeacherInput> = {};
+        const updateData: { -readonly [K in keyof TeacherInput]?: TeacherInput[K] } = {};
         if (formData.email !== currentTeacher?.email) updateData.email = formData.email;
         if (formData.first_name !== currentTeacher?.first_name) updateData.first_name = formData.first_name;
         if (formData.last_name !== currentTeacher?.last_name) updateData.last_name = formData.last_name;

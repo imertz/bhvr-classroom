@@ -22,10 +22,18 @@ import { errorMiddleware, errorHandler } from "./middleware/error";
 
 // Initialize database
 import { initializeDatabase, initializeAdminUser } from "./db/database";
+import { appRuntime } from "./services/AppRuntime";
 
 // Initialize database and admin user on startup
 initializeDatabase();
 initializeAdminUser();
+
+const shutdown = () => {
+	void appRuntime.dispose();
+};
+
+process.once("SIGINT", shutdown);
+process.once("SIGTERM", shutdown);
 
 export const app = new Hono<{ Variables: AuthVariables }>()
 	.use(requestId())

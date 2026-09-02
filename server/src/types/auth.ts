@@ -14,8 +14,8 @@ export type {
   RefreshResponse
 } from 'shared/src/types/auth';
 
-export interface AccessTokenPayload extends SharedAccessTokenPayload, JWTPayload {}
-export interface RefreshTokenPayload extends SharedRefreshTokenPayload, JWTPayload {}
+export type AccessTokenPayload = SharedAccessTokenPayload & JWTPayload;
+export type RefreshTokenPayload = SharedRefreshTokenPayload & JWTPayload;
 
 export interface AuthVariables {
   user?: AuthUser;

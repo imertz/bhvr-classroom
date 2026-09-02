@@ -1,27 +1,12 @@
-/**
- * @file classes.ts
- * @description Handles all class-related API endpoints
- * 
- * Endpoints:
- * - GET    /classes      - List all classes
- * - GET    /classes/:id  - Get class by ID
- * - POST   /classes      - Create new class
- * - PUT    /classes/:id  - Update class
- * - DELETE /classes/:id  - Delete class
- */
-
 import { Hono } from 'hono'
-import { zValidator } from '@hono/zod-validator'
-import { ClassSchema } from 'shared/src/types/class'
+import { Effect } from 'effect'
+import { ClassSchema, ClassInput, makePartial } from 'shared/dist'
 import type { AuthVariables } from '../types/auth'
-import {
-  createClass,
-  findClassById,
-  findAllClasses,
-  findClassesByStudentId,
-  updateClass,
-  deleteClass
-} from '../db/database'
+import { effectValidator } from '../middleware/validator'
+import { appRuntime } from '../services/AppRuntime'
+import { ClassRepo } from '../services/ClassRepo'
+
+const ClassUpdateSchema = makePartial(ClassInput.fields)
 
 export const classRoutes = new Hono<{ Variables: AuthVariables }>()
   /**
@@ -32,11 +17,15 @@ export const classRoutes = new Hono<{ Variables: AuthVariables }>()
 
     try {
       if (user?.role === 'student') {
-        const classes = await findClassesByStudentId(user.id)
+        const classes = await appRuntime.runPromise(
+          ClassRepo.use((repo) => repo.findByStudentId(user.id))
+        )
         return c.json({ data: classes, count: classes.length })
       }
 
-      const classes = await findAllClasses()
+      const classes = await appRuntime.runPromise(
+        ClassRepo.use((repo) => repo.findAll())
+      )
       return c.json({ data: classes, count: classes.length })
     } catch (error) {
       console.error('Error listing classes:', error)
@@ -51,7 +40,9 @@ export const classRoutes = new Hono<{ Variables: AuthVariables }>()
     const studentId = c.req.param('studentId')
 
     try {
-      const classes = await findClassesByStudentId(studentId)
+      const classes = await appRuntime.runPromise(
+        ClassRepo.use((repo) => repo.findByStudentId(studentId))
+      )
       return c.json({ data: classes, count: classes.length })
     } catch (error) {
       console.error('Error getting student classes:', error)
@@ -66,7 +57,11 @@ export const classRoutes = new Hono<{ Variables: AuthVariables }>()
     const id = c.req.param('id')
 
     try {
-      const class_ = await findClassById(id)
+      const class_ = await appRuntime.runPromise(
+        ClassRepo.use((repo) => repo.findById(id)).pipe(
+          Effect.catchTag('NotFoundError', () => Effect.succeed(null))
+        )
+      )
       if (!class_) {
         return c.json({ error: 'Class not found' }, 404)
       }
@@ -80,11 +75,13 @@ export const classRoutes = new Hono<{ Variables: AuthVariables }>()
   /**
    * Create new class
    */
-  .post('/', zValidator('json', ClassSchema), async (c) => {
+  .post('/', effectValidator('json', ClassSchema), async (c) => {
     const data = c.req.valid('json')
 
     try {
-      const class_ = await createClass(data)
+      const class_ = await appRuntime.runPromise(
+        ClassRepo.use((repo) => repo.create(data))
+      )
       return c.json({ data: class_ }, 201)
     } catch (error) {
       console.error('Error creating class:', error)
@@ -95,12 +92,16 @@ export const classRoutes = new Hono<{ Variables: AuthVariables }>()
   /**
    * Update class
    */
-  .put('/:id', zValidator('json', ClassSchema.partial()), async (c) => {
+  .put('/:id', effectValidator('json', ClassUpdateSchema), async (c) => {
     const id = c.req.param('id')
     const data = c.req.valid('json')
 
     try {
-      const class_ = await updateClass(id, data)
+      const class_ = await appRuntime.runPromise(
+        ClassRepo.use((repo) => repo.update(id, data)).pipe(
+          Effect.catchTag('NotFoundError', () => Effect.succeed(null))
+        )
+      )
       if (!class_) {
         return c.json({ error: 'Class not found' }, 404)
       }
@@ -118,7 +119,9 @@ export const classRoutes = new Hono<{ Variables: AuthVariables }>()
     const id = c.req.param('id')
 
     try {
-      const deleted = await deleteClass(id)
+      const deleted = await appRuntime.runPromise(
+        ClassRepo.use((repo) => repo.delete(id))
+      )
       if (!deleted) {
         return c.json({ error: 'Class not found' }, 404)
       }
