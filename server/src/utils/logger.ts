@@ -224,6 +224,8 @@ export class Logger {
         : `${ANSI.magenta}(user: ${mergedContext.role || 'user'}:${mergedContext.userId})${ANSI.reset}`
       : '';
 
+    const statusStr = this.formatStatusColor(mergedContext.status as number | undefined);
+
     const durationStr =
       mergedContext.durationMs !== undefined
         ? this.isColorDisabled
@@ -231,7 +233,7 @@ export class Logger {
           : `${ANSI.gray}+${mergedContext.durationMs}ms${ANSI.reset}`
         : '';
 
-    const parts = [timeStr, levelStr, reqIdStr, message, userStr, durationStr].filter(
+    const parts = [timeStr, levelStr, reqIdStr, message, statusStr, userStr, durationStr].filter(
       Boolean
     );
 

@@ -65,11 +65,15 @@ beforeAll(async () => {
 
 describe("API Routes & Role-Based Access Control", () => {
   describe("Teachers Management (/api/teachers)", () => {
-    it("should allow public read access to teachers list", async () => {
+    it("should allow public read access to teachers list and not leak password_hash", async () => {
       const res = await app.request("/api/teachers");
       expect(res.status).toBe(200);
       const body = await res.json() as any;
       expect(Array.isArray(body.data)).toBe(true);
+      expect(body.data.length).toBeGreaterThan(0);
+      for (const t of body.data) {
+        expect(t.password_hash).toBeUndefined();
+      }
     });
 
     it("should forbid non-admin from creating a teacher (403)", async () => {
@@ -90,7 +94,7 @@ describe("API Routes & Role-Based Access Control", () => {
       expect(res.status).toBe(403);
     });
 
-    it("should allow admin to create a teacher (201)", async () => {
+    it("should allow admin to create a teacher without leaking password_hash (201)", async () => {
       const res = await app.request("/api/teachers", {
         method: "POST",
         headers: {
@@ -108,6 +112,36 @@ describe("API Routes & Role-Based Access Control", () => {
       expect(res.status).toBe(201);
       const body = await res.json() as any;
       expect(body.data.first_name).toBe("AdminCreated");
+      expect(body.data.password_hash).toBeUndefined();
+    });
+
+    it("should get teacher by ID without leaking password_hash", async () => {
+      const res = await app.request(`/api/teachers/${testTeacherId}`);
+      expect(res.status).toBe(200);
+      const body = await res.json() as any;
+      expect(body.data.id).toBe(testTeacherId);
+      expect(body.data.password_hash).toBeUndefined();
+    });
+  });
+
+  describe("Students Management (/api/students)", () => {
+    it("should allow public read access to students list without leaking password_hash", async () => {
+      const res = await app.request("/api/students");
+      expect(res.status).toBe(200);
+      const body = await res.json() as any;
+      expect(Array.isArray(body.data)).toBe(true);
+      expect(body.data.length).toBeGreaterThan(0);
+      for (const s of body.data) {
+        expect(s.password_hash).toBeUndefined();
+      }
+    });
+
+    it("should get student by ID without leaking password_hash", async () => {
+      const res = await app.request(`/api/students/${testStudentId}`);
+      expect(res.status).toBe(200);
+      const body = await res.json() as any;
+      expect(body.data.id).toBe(testStudentId);
+      expect(body.data.password_hash).toBeUndefined();
     });
   });
 

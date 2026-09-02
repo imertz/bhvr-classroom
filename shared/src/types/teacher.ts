@@ -7,7 +7,6 @@ import { z } from 'zod'
 export interface Teacher {
   id: string
   email: string
-  password_hash: string
   first_name: string
   last_name: string
   role: 'teacher' | 'admin'
@@ -15,7 +14,7 @@ export interface Teacher {
   updated_at: string
 }
 
-export type TeacherInput = Omit<Teacher, 'id' | 'created_at' | 'updated_at' | 'password_hash' | 'role'> & {
+export type TeacherInput = Omit<Teacher, 'id' | 'created_at' | 'updated_at' | 'role'> & {
   role?: 'teacher' | 'admin';
   password?: string;
 }

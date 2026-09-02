@@ -12,7 +12,6 @@ export interface Student {
   date_of_birth: string
   grade_level: number
   role?: 'student'
-  password_hash?: string | null
   created_at: string
   updated_at: string
 }

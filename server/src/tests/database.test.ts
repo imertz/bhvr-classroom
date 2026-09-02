@@ -35,13 +35,15 @@ describe("Database Layer Operations & Integrity", () => {
 
     expect(teacher.id).toBeDefined();
     expect(teacher.email).toBe(email);
-    expect(teacher.password_hash).toBeDefined();
+    expect((teacher as any).password_hash).toBeUndefined();
 
     const byId = await findTeacherById(teacher.id);
     expect(byId?.email).toBe(email);
+    expect((byId as any)?.password_hash).toBeUndefined();
 
     const byEmail = await findTeacherByEmail(email);
     expect(byEmail?.id).toBe(teacher.id);
+    expect(byEmail?.password_hash).toBeDefined();
   });
 
   it("should update a teacher and verify password change", async () => {
@@ -59,7 +61,10 @@ describe("Database Layer Operations & Integrity", () => {
     });
 
     expect(updated?.first_name).toBe("Updated");
-    const isNewValid = await Bun.password.verify("NewPassword2!", updated!.password_hash);
+    expect((updated as any)?.password_hash).toBeUndefined();
+    const teacherRecord = await findTeacherByEmail(email);
+    expect(teacherRecord?.password_hash).toBeDefined();
+    const isNewValid = await Bun.password.verify("NewPassword2!", teacherRecord!.password_hash);
     expect(isNewValid).toBe(true);
   });
 

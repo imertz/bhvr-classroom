@@ -98,6 +98,14 @@ function runMigrations() {
   }
 }
 
+export interface TeacherRecord extends Teacher {
+  password_hash: string;
+}
+
+export interface StudentRecord extends Student {
+  password_hash: string | null;
+}
+
 // Teacher functions
 /**
  * Creates a new teacher in the database.
@@ -113,7 +121,7 @@ export async function createTeacher(data: TeacherInput): Promise<Teacher> {
   const role = (data as any).role || 'teacher'; // Default to teacher if not specified
 
   const query = db.query(
-    "INSERT INTO teachers (id, email, password_hash, first_name, last_name, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *"
+    "INSERT INTO teachers (id, email, password_hash, first_name, last_name, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, email, first_name, last_name, role, created_at, updated_at"
   );
   return query.get(id, data.email, hashedPassword, data.first_name, data.last_name, role, now, now) as Teacher;
 }
@@ -124,7 +132,7 @@ export async function createTeacher(data: TeacherInput): Promise<Teacher> {
  * @returns The teacher if found, otherwise null.
  */
 export async function findTeacherById(id: string): Promise<Teacher | null> {
-  const query = db.query("SELECT * FROM teachers WHERE id = ?");
+  const query = db.query("SELECT id, email, first_name, last_name, role, created_at, updated_at FROM teachers WHERE id = ?");
   return query.get(id) as Teacher | null;
 }
 
@@ -133,9 +141,9 @@ export async function findTeacherById(id: string): Promise<Teacher | null> {
  * @param email - The email of the teacher to find.
  * @returns The teacher if found, otherwise null.
  */
-export async function findTeacherByEmail(email: string): Promise<Teacher | null> {
+export async function findTeacherByEmail(email: string): Promise<TeacherRecord | null> {
   const query = db.query("SELECT * FROM teachers WHERE email = ?");
-  return query.get(email) as Teacher | null;
+  return query.get(email) as TeacherRecord | null;
 }
 
 /**
@@ -143,7 +151,7 @@ export async function findTeacherByEmail(email: string): Promise<Teacher | null>
  * @returns A list of all teachers.
  */
 export async function findAllTeachers(): Promise<Teacher[]> {
-  const query = db.query("SELECT * FROM teachers");
+  const query = db.query("SELECT id, email, first_name, last_name, role, created_at, updated_at FROM teachers");
   return query.all() as Teacher[];
 }
 
@@ -169,7 +177,7 @@ export async function updateTeacher(id: string, data: Partial<TeacherInput>): Pr
     }
   }
 
-  updateQuery += " WHERE id = ? RETURNING *";
+  updateQuery += " WHERE id = ? RETURNING id, email, first_name, last_name, role, created_at, updated_at";
   params.push(id);
 
   const query = db.query(updateQuery);
@@ -200,7 +208,7 @@ export async function createStudent(data: StudentInput): Promise<Student> {
   const passwordHash = data.password ? await Bun.password.hash(data.password) : null;
   const role = (data as any).role || 'student';
   const query = db.query(
-    "INSERT INTO students (id, email, password_hash, first_name, last_name, date_of_birth, grade_level, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *"
+    "INSERT INTO students (id, email, password_hash, first_name, last_name, date_of_birth, grade_level, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, email, first_name, last_name, date_of_birth, grade_level, role, created_at, updated_at"
   );
   return query.get(id, data.email, passwordHash, data.first_name, data.last_name, data.date_of_birth, data.grade_level, role, now, now) as Student;
 }
@@ -211,7 +219,7 @@ export async function createStudent(data: StudentInput): Promise<Student> {
  * @returns The student if found, otherwise null.
  */
 export async function findStudentById(id: string): Promise<Student | null> {
-  const query = db.query("SELECT * FROM students WHERE id = ?");
+  const query = db.query("SELECT id, email, first_name, last_name, date_of_birth, grade_level, role, created_at, updated_at FROM students WHERE id = ?");
   return query.get(id) as Student | null;
 }
 
@@ -220,9 +228,9 @@ export async function findStudentById(id: string): Promise<Student | null> {
  * @param email - The email of the student to find.
  * @returns The student if found, otherwise null.
  */
-export async function findStudentByEmail(email: string): Promise<Student | null> {
+export async function findStudentByEmail(email: string): Promise<StudentRecord | null> {
   const query = db.query("SELECT * FROM students WHERE email = ?");
-  return query.get(email) as Student | null;
+  return query.get(email) as StudentRecord | null;
 }
 
 /**
@@ -230,7 +238,7 @@ export async function findStudentByEmail(email: string): Promise<Student | null>
  * @returns A list of all students.
  */
 export async function findAllStudents(): Promise<Student[]> {
-  const query = db.query("SELECT * FROM students");
+  const query = db.query("SELECT id, email, first_name, last_name, date_of_birth, grade_level, role, created_at, updated_at FROM students");
   return query.all() as Student[];
 }
 
@@ -256,7 +264,7 @@ export async function updateStudent(id: string, data: Partial<StudentInput>): Pr
     }
   }
 
-  updateQuery += " WHERE id = ? RETURNING *";
+  updateQuery += " WHERE id = ? RETURNING id, email, first_name, last_name, date_of_birth, grade_level, role, created_at, updated_at";
   params.push(id);
 
   const query = db.query(updateQuery);
@@ -281,7 +289,7 @@ export async function deleteStudent(id: string): Promise<boolean> {
  */
 export async function findStudentsByClassId(classId: string): Promise<Student[]> {
   const query = db.query(`
-        SELECT s.* FROM students s
+        SELECT s.id, s.email, s.first_name, s.last_name, s.date_of_birth, s.grade_level, s.role, s.created_at, s.updated_at FROM students s
         JOIN enrollments e ON s.id = e.student_id
         WHERE e.class_id = ?
     `);
