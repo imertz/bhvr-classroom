@@ -5,6 +5,7 @@ import type { AuthVariables } from '../types/auth'
 import { effectValidator } from '../middleware/validator'
 import { appRuntime } from '../services/AppRuntime'
 import { AttendanceRepo } from '../services/AttendanceRepo'
+import { isConflictError } from '../utils/errors'
 
 const AttendanceUpdateSchema = makePartial(AttendanceInput.fields)
 
@@ -60,6 +61,7 @@ export const attendanceRoutes = new Hono<{ Variables: AuthVariables }>()
    */
   .get('/:id', async (c) => {
     const id = c.req.param('id')
+    const user = c.get('user')
 
     try {
       const attendance = await appRuntime.runPromise(
@@ -69,6 +71,9 @@ export const attendanceRoutes = new Hono<{ Variables: AuthVariables }>()
       )
       if (!attendance) {
         return c.json({ error: 'Attendance record not found' }, 404)
+      }
+      if (user?.role === 'student' && attendance.student_id !== user.id) {
+        return c.json({ error: 'Forbidden: You cannot access other students\' attendance records' }, 403)
       }
       return c.json({ data: attendance })
     } catch (error) {
@@ -89,6 +94,9 @@ export const attendanceRoutes = new Hono<{ Variables: AuthVariables }>()
       )
       return c.json({ data: attendance }, 201)
     } catch (error) {
+      if (isConflictError(error)) {
+        return c.json({ error: error.message }, 409)
+      }
       console.error('Error creating attendance record:', error)
       return c.json({ error: 'Failed to create attendance record' }, 500)
     }
@@ -112,6 +120,9 @@ export const attendanceRoutes = new Hono<{ Variables: AuthVariables }>()
       }
       return c.json({ data: attendance })
     } catch (error) {
+      if (isConflictError(error)) {
+        return c.json({ error: error.message }, 409)
+      }
       console.error('Error updating attendance record:', error)
       return c.json({ error: 'Failed to update attendance record' }, 500)
     }

@@ -1,8 +1,9 @@
 import { Context, Effect, Layer } from "effect";
 import { randomUUIDv7 as randomUUID } from "bun";
 import type { Enrollment, EnrollmentInput } from "shared/dist";
-import { DatabaseError, NotFoundError } from "shared/dist";
+import { ConflictError, DatabaseError, NotFoundError } from "shared/dist";
 import { SqliteClient } from "./SqliteClient";
+import { withUniqueConstraintConflict } from "./SqliteErrors";
 
 export class EnrollmentRepo extends Context.Service<EnrollmentRepo, {
   readonly findAll: () => Effect.Effect<Enrollment[], DatabaseError>;
@@ -10,8 +11,8 @@ export class EnrollmentRepo extends Context.Service<EnrollmentRepo, {
   readonly findByIdOrNull: (id: string) => Effect.Effect<Enrollment | null, DatabaseError>;
   readonly findByStudentId: (studentId: string) => Effect.Effect<Enrollment[], DatabaseError>;
   readonly findByClassId: (classId: string) => Effect.Effect<Enrollment[], DatabaseError>;
-  readonly create: (input: EnrollmentInput) => Effect.Effect<Enrollment, DatabaseError>;
-  readonly update: (id: string, input: Partial<EnrollmentInput>) => Effect.Effect<Enrollment, NotFoundError | DatabaseError>;
+  readonly create: (input: EnrollmentInput) => Effect.Effect<Enrollment, DatabaseError | ConflictError>;
+  readonly update: (id: string, input: Partial<EnrollmentInput>) => Effect.Effect<Enrollment, NotFoundError | DatabaseError | ConflictError>;
   readonly delete: (id: string) => Effect.Effect<boolean, DatabaseError>;
 }>()("server/EnrollmentRepo") {
   static readonly layer = Layer.effect(
@@ -46,9 +47,12 @@ export class EnrollmentRepo extends Context.Service<EnrollmentRepo, {
       const create = Effect.fn("EnrollmentRepo.create")(function*(input: EnrollmentInput) {
         const now = new Date().toISOString();
         const id = randomUUID();
-        const res = yield* sqlite.queryOne<Enrollment>(
-          "INSERT INTO enrollments (id, student_id, class_id, enrolled_at, status) VALUES (?, ?, ?, ?, ?) RETURNING *",
-          [id, input.student_id, input.class_id, now, input.status || "active"]
+        const res = yield* withUniqueConstraintConflict(
+          sqlite.queryOne<Enrollment>(
+            "INSERT INTO enrollments (id, student_id, class_id, enrolled_at, status) VALUES (?, ?, ?, ?, ?) RETURNING *",
+            [id, input.student_id, input.class_id, now, input.status || "active"]
+          ),
+          "This student is already enrolled in this class"
         );
         if (!res) {
           return yield* new DatabaseError({ message: "Failed to create enrollment record" });
@@ -75,7 +79,10 @@ export class EnrollmentRepo extends Context.Service<EnrollmentRepo, {
         updateQuery += ` ${updates.join(", ")} WHERE id = ? RETURNING *`;
         params.push(id);
 
-        const res = yield* sqlite.queryOne<Enrollment>(updateQuery, params);
+        const res = yield* withUniqueConstraintConflict(
+          sqlite.queryOne<Enrollment>(updateQuery, params),
+          "This student is already enrolled in this class"
+        );
         if (!res) {
           return yield* new NotFoundError({ message: `Enrollment with id ${id} not found`, entity: "Enrollment", id });
         }

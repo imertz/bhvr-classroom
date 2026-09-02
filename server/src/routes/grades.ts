@@ -5,6 +5,8 @@ import type { AuthVariables } from '../types/auth'
 import { effectValidator } from '../middleware/validator'
 import { appRuntime } from '../services/AppRuntime'
 import { GradeRepo } from '../services/GradeRepo'
+import { SubmissionRepo } from '../services/SubmissionRepo'
+import { isConflictError } from '../utils/errors'
 
 const GradeUpdateSchema = makePartial(GradeInput.fields)
 
@@ -60,6 +62,7 @@ export const gradeRoutes = new Hono<{ Variables: AuthVariables }>()
    */
   .get('/:id', async (c) => {
     const id = c.req.param('id')
+    const user = c.get('user')
 
     try {
       const grade = await appRuntime.runPromise(
@@ -69,6 +72,14 @@ export const gradeRoutes = new Hono<{ Variables: AuthVariables }>()
       )
       if (!grade) {
         return c.json({ error: 'Grade not found' }, 404)
+      }
+      if (user?.role === 'student') {
+        const submission = await appRuntime.runPromise(
+          SubmissionRepo.use((repo) => repo.findByIdOrNull(grade.submission_id))
+        )
+        if (submission && submission.student_id !== user.id) {
+          return c.json({ error: 'Forbidden: You cannot access other students\' grades' }, 403)
+        }
       }
       return c.json({ data: grade })
     } catch (error) {
@@ -82,13 +93,19 @@ export const gradeRoutes = new Hono<{ Variables: AuthVariables }>()
    */
   .post('/', effectValidator('json', GradeSchema), async (c) => {
     const data = c.req.valid('json')
+    const user = c.get('user')
+
+    const gradeData: GradeInput = user?.role === 'teacher' ? { ...data, graded_by: user.id } : data
 
     try {
       const grade = await appRuntime.runPromise(
-        GradeRepo.use((repo) => repo.create(data))
+        GradeRepo.use((repo) => repo.create(gradeData))
       )
       return c.json({ data: grade }, 201)
     } catch (error) {
+      if (isConflictError(error)) {
+        return c.json({ error: error.message }, 409)
+      }
       console.error('Error creating grade:', error)
       return c.json({ error: 'Failed to create grade' }, 500)
     }
@@ -112,6 +129,9 @@ export const gradeRoutes = new Hono<{ Variables: AuthVariables }>()
       }
       return c.json({ data: grade })
     } catch (error) {
+      if (isConflictError(error)) {
+        return c.json({ error: error.message }, 409)
+      }
       console.error('Error updating grade:', error)
       return c.json({ error: 'Failed to update grade' }, 500)
     }

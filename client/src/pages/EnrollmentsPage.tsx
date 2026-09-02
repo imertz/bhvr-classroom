@@ -24,6 +24,7 @@ import {
   RecordRow,
   RecordTable,
 } from '../components/ui/record';
+import { usePermissions } from '../hooks/usePermissions';
 import type { Enrollment, EnrollmentInput } from 'shared/dist';
 
 const STATUS_TONE = {
@@ -33,6 +34,8 @@ const STATUS_TONE = {
 } satisfies Record<string, 'mute' | 'signal' | 'alert' | 'ink'>;
 
 export default function EnrollmentsPage() {
+  const { canCreate, canEdit, canDelete } = usePermissions();
+  const canManage = canCreate || canEdit || canDelete;
   const { data: enrollments = [], isLoading: loadingEnrollments, error: enrollmentsError } = useEnrollments();
   const { data: students = [], isLoading: loadingStudents } = useStudents();
   const { data: classes = [], isLoading: loadingClasses } = useClasses();
@@ -133,9 +136,11 @@ export default function EnrollmentsPage() {
         count={loading ? undefined : enrollments.length}
         countLabel="on record"
         action={
-          <Button onClick={() => (showForm ? closeForm() : setShowForm(true))} variant={showForm ? 'outline' : 'default'}>
-            {showForm ? 'Close' : 'Add enrollment'}
-          </Button>
+          canCreate && (
+            <Button onClick={() => (showForm ? closeForm() : setShowForm(true))} variant={showForm ? 'outline' : 'default'}>
+              {showForm ? 'Close' : 'Add enrollment'}
+            </Button>
+          )
         }
       />
 
@@ -256,7 +261,7 @@ export default function EnrollmentsPage() {
                 { label: 'Email', width: 28 },
                 { label: 'Status', width: 14 },
                 { label: 'Enrolled', width: 20 },
-                { label: null, width: 14 },
+                ...(canManage ? [{ label: null, width: 14 }] : []),
               ]}
             >
               {classEnrollments.map((enrollment: Enrollment, i) => (
@@ -278,11 +283,15 @@ export default function EnrollmentsPage() {
                     </Marker>
                   </Cell>
                   <Cell tone="numeral">{formatDateTime(enrollment.enrolled_at)}</Cell>
-                  <RecordActions
-                    onEdit={() => handleEdit(enrollment)}
-                    onDelete={() => handleDelete(enrollment.id)}
-                    deleteLabel="Remove"
-                  />
+                  {canManage && (
+                    <RecordActions
+                      onEdit={() => handleEdit(enrollment)}
+                      onDelete={() => handleDelete(enrollment.id)}
+                      canEdit={canEdit}
+                      canDelete={canDelete}
+                      deleteLabel="Remove"
+                    />
+                  )}
                 </RecordRow>
               ))}
             </RecordTable>

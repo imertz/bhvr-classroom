@@ -48,10 +48,10 @@ describe('Logger & Observability', () => {
       expect(redacted.user.credentials.refreshToken).toBe('[REDACTED]');
       expect(redacted.user.credentials.secret).toBe('[REDACTED]');
       expect(redacted.tags).toEqual(['math', 'grade-10']);
-      expect(redacted.students[0].name).toBe('Alice');
-      expect(redacted.students[0].password).toBe('[REDACTED]');
-      expect(redacted.students[1].name).toBe('Bob');
-      expect(redacted.students[1].password).toBe('[REDACTED]');
+      expect(redacted.students[0]?.name).toBe('Alice');
+      expect(redacted.students[0]?.password).toBe('[REDACTED]');
+      expect(redacted.students[1]?.name).toBe('Bob');
+      expect(redacted.students[1]?.password).toBe('[REDACTED]');
     });
 
     it('should handle null, undefined, and non-object inputs safely', () => {

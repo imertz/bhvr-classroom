@@ -1,8 +1,9 @@
 import { Context, Effect, Layer } from "effect";
 import { randomUUIDv7 as randomUUID } from "bun";
 import type { Student, StudentInput } from "shared/dist";
-import { DatabaseError, NotFoundError } from "shared/dist";
+import { ConflictError, DatabaseError, NotFoundError } from "shared/dist";
 import { SqliteClient } from "./SqliteClient";
+import { withUniqueConstraintConflict } from "./SqliteErrors";
 
 export interface StudentRecord extends Student {
   password_hash: string | null;
@@ -14,8 +15,8 @@ export class StudentRepo extends Context.Service<StudentRepo, {
   readonly findByIdOrNull: (id: string) => Effect.Effect<Student | null, DatabaseError>;
   readonly findByEmail: (email: string) => Effect.Effect<StudentRecord | null, DatabaseError>;
   readonly findByClassId: (classId: string) => Effect.Effect<Student[], DatabaseError>;
-  readonly create: (input: StudentInput) => Effect.Effect<Student, DatabaseError>;
-  readonly update: (id: string, input: Partial<StudentInput>) => Effect.Effect<Student, NotFoundError | DatabaseError>;
+  readonly create: (input: StudentInput) => Effect.Effect<Student, DatabaseError | ConflictError>;
+  readonly update: (id: string, input: Partial<StudentInput>) => Effect.Effect<Student, NotFoundError | DatabaseError | ConflictError>;
   readonly delete: (id: string) => Effect.Effect<boolean, DatabaseError>;
 }>()("server/StudentRepo") {
   static readonly layer = Layer.effect(
@@ -71,9 +72,12 @@ export class StudentRepo extends Context.Service<StudentRepo, {
           : null;
         const role = input.role || "student";
 
-        const res = yield* sqlite.queryOne<Student>(
-          "INSERT INTO students (id, email, password_hash, first_name, last_name, date_of_birth, grade_level, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, email, first_name, last_name, date_of_birth, grade_level, role, created_at, updated_at",
-          [id, input.email, passwordHash, input.first_name, input.last_name, input.date_of_birth, input.grade_level, role, now, now]
+        const res = yield* withUniqueConstraintConflict(
+          sqlite.queryOne<Student>(
+            "INSERT INTO students (id, email, password_hash, first_name, last_name, date_of_birth, grade_level, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, email, first_name, last_name, date_of_birth, grade_level, role, created_at, updated_at",
+            [id, input.email, passwordHash, input.first_name, input.last_name, input.date_of_birth, input.grade_level, role, now, now]
+          ),
+          "A student with this email already exists"
         );
         if (!res) {
           return yield* new DatabaseError({ message: "Failed to insert student record" });
@@ -87,13 +91,15 @@ export class StudentRepo extends Context.Service<StudentRepo, {
         const params: (string | number | null)[] = [now];
 
         for (const [key, value] of Object.entries(input)) {
-          if (key === "password" && value) {
-            const hashedPassword = yield* Effect.tryPromise({
-              try: () => Bun.password.hash(String(value)),
-              catch: (e) => new DatabaseError({ message: "Failed to hash password", cause: e })
-            });
-            updateQuery += `, password_hash = ?`;
-            params.push(hashedPassword);
+          if (key === "password") {
+            if (value) {
+              const hashedPassword = yield* Effect.tryPromise({
+                try: () => Bun.password.hash(String(value)),
+                catch: (e) => new DatabaseError({ message: "Failed to hash password", cause: e })
+              });
+              updateQuery += `, password_hash = ?`;
+              params.push(hashedPassword);
+            }
           } else if (value !== undefined) {
             updateQuery += `, ${key.replace(/([A-Z])/g, "_$1").toLowerCase()} = ?`;
             params.push(value);
@@ -103,7 +109,10 @@ export class StudentRepo extends Context.Service<StudentRepo, {
         updateQuery += " WHERE id = ? RETURNING id, email, first_name, last_name, date_of_birth, grade_level, role, created_at, updated_at";
         params.push(id);
 
-        const res = yield* sqlite.queryOne<Student>(updateQuery, params);
+        const res = yield* withUniqueConstraintConflict(
+          sqlite.queryOne<Student>(updateQuery, params),
+          "A student with this email already exists"
+        );
         if (!res) {
           return yield* new NotFoundError({ message: `Student with id ${id} not found`, entity: "Student", id });
         }
@@ -128,4 +137,3 @@ export class StudentRepo extends Context.Service<StudentRepo, {
     })
   );
 }
-

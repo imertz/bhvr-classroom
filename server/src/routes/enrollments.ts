@@ -5,6 +5,7 @@ import type { AuthVariables } from '../types/auth'
 import { effectValidator } from '../middleware/validator'
 import { appRuntime } from '../services/AppRuntime'
 import { EnrollmentRepo } from '../services/EnrollmentRepo'
+import { isConflictError } from '../utils/errors'
 
 const EnrollmentUpdateSchema = makePartial(EnrollmentInput.fields)
 
@@ -84,6 +85,9 @@ export const enrollmentRoutes = new Hono<{ Variables: AuthVariables }>()
       )
       return c.json({ data: enrollment }, 201)
     } catch (error) {
+      if (isConflictError(error)) {
+        return c.json({ error: error.message }, 409)
+      }
       console.error('Error creating enrollment:', error)
       return c.json({ error: 'Failed to create enrollment' }, 500)
     }
@@ -107,6 +111,9 @@ export const enrollmentRoutes = new Hono<{ Variables: AuthVariables }>()
       }
       return c.json({ data: enrollment })
     } catch (error) {
+      if (isConflictError(error)) {
+        return c.json({ error: error.message }, 409)
+      }
       console.error('Error updating enrollment:', error)
       return c.json({ error: 'Failed to update enrollment' }, 500)
     }

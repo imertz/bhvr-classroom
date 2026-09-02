@@ -12,7 +12,7 @@ export interface NavItem {
  * numbered index; the masthead reads the same list to resolve the active
  * module's ordinal (e.g. 04/10).
  */
-export function getNavItems({ isAdmin, isTeacher, isStudent }: Permissions): NavItem[] {
+export function getNavItems({ isAdmin, isTeacher, isStudent, isAuthenticated }: Permissions): NavItem[] {
   return [
     { path: '/', code: 'HOME', label: 'Overview', show: true },
     { path: '/teachers', code: 'TCHR', label: 'Teachers', show: isAdmin },
@@ -20,10 +20,10 @@ export function getNavItems({ isAdmin, isTeacher, isStudent }: Permissions): Nav
     { path: '/classes', code: 'CLSS', label: isStudent ? 'My Classes' : 'Classes', show: true },
     { path: '/assignments', code: 'ASGN', label: isStudent ? 'My Assignments' : 'Assignments', show: true },
     { path: '/announcements', code: 'ANNC', label: 'Announcements', show: true },
-    { path: '/submissions', code: 'SUBM', label: isStudent ? 'My Submissions' : 'Submissions', show: true },
+    { path: '/submissions', code: 'SUBM', label: isStudent ? 'My Submissions' : 'Submissions', show: isAuthenticated },
     { path: '/enrollments', code: 'ENRL', label: 'Enrollments', show: isAdmin || isTeacher },
-    { path: '/attendance', code: 'ATTN', label: isStudent ? 'My Attendance' : 'Attendance', show: true },
-    { path: '/grades', code: 'GRDS', label: isStudent ? 'My Grades' : 'Grades', show: true },
+    { path: '/attendance', code: 'ATTN', label: isStudent ? 'My Attendance' : 'Attendance', show: isAuthenticated },
+    { path: '/grades', code: 'GRDS', label: isStudent ? 'My Grades' : 'Grades', show: isAuthenticated },
   ]
     .filter((item) => item.show)
     .map(({ path, code, label }) => ({ path, code, label }));

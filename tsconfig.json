@@ -30,6 +30,7 @@
 
     // Output control
     "skipLibCheck": true,
+    "noEmit": true,
 
     // Optional strict flags (disabled by default)
     "noUnusedLocals": false,

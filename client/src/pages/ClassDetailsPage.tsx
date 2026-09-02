@@ -121,7 +121,7 @@ export default function ClassDetailsPage() {
   const [attendanceForm, setAttendanceForm] = useState<AttendanceInput>({
     student_id: '',
     class_id: id || '',
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().slice(0, 10),
     status: 'present',
     notes: null,
   });
@@ -223,7 +223,7 @@ export default function ClassDetailsPage() {
     setAttendanceForm({
       student_id: '',
       class_id: id,
-      date: new Date().toISOString().split('T')[0],
+      date: new Date().toISOString().slice(0, 10),
       status: 'present',
       notes: null,
     });

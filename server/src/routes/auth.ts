@@ -15,6 +15,7 @@ import { AuthRepo } from '../services/AuthRepo'
 import { AuthService } from '../services/AuthService'
 import { AUTH_CONFIG } from '../config/auth'
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth'
+import { isConflictError } from '../utils/errors'
 
 export const authRoutes = new Hono<{ Variables: AuthVariables }>()
   // Unified login (auto-detects teacher vs student)
@@ -392,6 +393,9 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
         accessToken: result.data.accessToken
       }, 201)
     } catch (error) {
+      if (isConflictError(error)) {
+        return c.json({ error: error.message }, 409)
+      }
       console.error('Registration error:', error)
       return c.json({ error: 'Registration failed' }, 500)
     }

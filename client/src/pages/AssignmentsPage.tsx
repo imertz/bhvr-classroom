@@ -13,6 +13,7 @@ import {
   RecordRow,
   RecordTable,
 } from '../components/ui/record';
+import { usePermissions } from '../hooks/usePermissions';
 import type { Assignment, AssignmentInput } from 'shared/dist';
 
 /** Assignment types read as stamps; the graded ones carry more weight. */
@@ -24,6 +25,7 @@ const TYPE_TONE = {
 } satisfies Record<string, 'mute' | 'signal' | 'ink'>;
 
 export default function AssignmentsPage() {
+  const { canCreate, canDelete, isStudent } = usePermissions();
   const { data: assignments = [], isLoading: loadingAssignments, error: assignmentsError } = useAssignments();
   const { data: classes = [], isLoading: loadingClasses } = useClasses();
   const createAssignmentMutation = useCreateAssignment();
@@ -75,13 +77,20 @@ export default function AssignmentsPage() {
     <div>
       <RecordHeader
         eyebrow="ASGN · Register"
-        title="Assignments"
+        title={isStudent ? 'My Assignments' : 'Assignments'}
+        subtitle={
+          isStudent
+            ? 'Your coursework, homework, projects and deadlines.'
+            : 'Set homework, projects and deadlines.'
+        }
         count={loading ? undefined : assignments.length}
         countLabel="set"
         action={
-          <Button onClick={() => setShowForm(!showForm)} variant={showForm ? 'outline' : 'default'}>
-            {showForm ? 'Close' : 'Add assignment'}
-          </Button>
+          canCreate && (
+            <Button onClick={() => setShowForm(!showForm)} variant={showForm ? 'outline' : 'default'}>
+              {showForm ? 'Close' : 'Add assignment'}
+            </Button>
+          )
         }
       />
 
@@ -144,7 +153,7 @@ export default function AssignmentsPage() {
                   id="assignment-points"
                   type="number"
                   value={formData.points_possible}
-                  onChange={(e) => setFormData({ ...formData, points_possible: parseInt(e.target.value) })}
+                  onChange={(e) => setFormData({ ...formData, points_possible: parseInt(e.target.value) || 0 })}
                   required
                   min="1"
                   className="field"
@@ -200,7 +209,7 @@ export default function AssignmentsPage() {
             { label: 'Type', width: 12 },
             { label: 'Points', width: 8 },
             { label: 'Due', width: 18 },
-            { label: null, width: 10 },
+            ...(canDelete ? [{ label: null, width: 10 }] : []),
           ]}
         >
           {assignments.map((assignment: Assignment, i) => (
@@ -226,15 +235,17 @@ export default function AssignmentsPage() {
               </Cell>
               <Cell tone="numeral">{assignment.points_possible}</Cell>
               <Cell tone="numeral">{formatDateTime(assignment.due_date)}</Cell>
-              <td className="py-4 pr-6 text-right align-middle sm:pr-8 lg:pr-12">
-                <button
-                  type="button"
-                  onClick={() => handleDelete(assignment.id)}
-                  className="micro transition-colors duration-100 hover:text-destructive focus-visible:text-destructive"
-                >
-                  Delete
-                </button>
-              </td>
+              {canDelete && (
+                <td className="py-4 pr-6 text-right align-middle sm:pr-8 lg:pr-12">
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(assignment.id)}
+                    className="micro transition-colors duration-100 hover:text-destructive focus-visible:text-destructive"
+                  >
+                    Delete
+                  </button>
+                </td>
+              )}
             </RecordRow>
           ))}
         </RecordTable>

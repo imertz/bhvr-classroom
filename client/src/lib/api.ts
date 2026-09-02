@@ -49,6 +49,7 @@ const customFetch = async (input: RequestInfo | URL, init?: RequestInit): Promis
       });
     }
 
+    const wasAuthenticated = useAuthStore.getState().isAuthenticated;
     isRefreshing = true;
     try {
       await useAuthStore.getState().refreshAccessToken();
@@ -64,6 +65,10 @@ const customFetch = async (input: RequestInfo | URL, init?: RequestInit): Promis
           headers: retryHeaders,
           credentials: 'include',
         });
+      } else {
+        const err = new Error('Failed to refresh token: No access token returned');
+        requestQueue.forEach(({ reject }) => reject(err));
+        requestQueue = [];
       }
     } catch (refreshError) {
       const err = refreshError instanceof Error ? refreshError : new Error(String(refreshError));
@@ -71,7 +76,7 @@ const customFetch = async (input: RequestInfo | URL, init?: RequestInit): Promis
       requestQueue = [];
       useAuthStore.getState().clearAuth();
 
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+      if (wasAuthenticated && typeof window !== 'undefined' && window.location.pathname !== '/login' && window.location.pathname !== '/register') {
         window.location.href = '/login';
       }
       return res;

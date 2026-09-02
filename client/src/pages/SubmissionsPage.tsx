@@ -21,6 +21,8 @@ import {
   RecordRow,
   RecordTable,
 } from '../components/ui/record';
+import { useAuthStore } from '../stores/authStore';
+import { usePermissions } from '../hooks/usePermissions';
 import type { Submission, SubmissionInput } from 'shared/dist';
 
 const STATUS_TONE = {
@@ -30,6 +32,9 @@ const STATUS_TONE = {
 } satisfies Record<string, 'mute' | 'signal' | 'ink'>;
 
 export default function SubmissionsPage() {
+  const { user } = useAuthStore();
+  const { isAuthenticated, isStudent, isTeacher, isAdmin } = usePermissions();
+
   const { data: submissions = [], isLoading: loadingSubmissions, error: submissionsError } = useSubmissions();
   const { data: assignments = [], isLoading: loadingAssignments } = useAssignments();
   const { data: students = [], isLoading: loadingStudents } = useStudents();
@@ -53,11 +58,16 @@ export default function SubmissionsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const dataToSubmit: SubmissionInput = {
+      ...formData,
+      student_id: isStudent && user?.id ? user.id : formData.student_id,
+    };
+
     if (editingId) {
-      await updateSubmissionMutation.mutateAsync({ id: editingId, data: formData });
+      await updateSubmissionMutation.mutateAsync({ id: editingId, data: dataToSubmit });
       setEditingId(null);
     } else {
-      await createSubmissionMutation.mutateAsync(formData);
+      await createSubmissionMutation.mutateAsync(dataToSubmit);
     }
 
     setShowForm(false);
@@ -78,7 +88,7 @@ export default function SubmissionsPage() {
   const resetForm = () => {
     setFormData({
       assignment_id: '',
-      student_id: '',
+      student_id: isStudent && user?.id ? user.id : '',
       content: '',
       status: 'submitted',
     });
@@ -88,6 +98,11 @@ export default function SubmissionsPage() {
     if (confirm('Are you sure you want to delete this submission?')) {
       await deleteSubmissionMutation.mutateAsync(id);
     }
+  };
+
+  const openForm = () => {
+    resetForm();
+    setShowForm(true);
   };
 
   const closeForm = () => {
@@ -121,13 +136,20 @@ export default function SubmissionsPage() {
     <div>
       <RecordHeader
         eyebrow="SUBM · Register"
-        title="Submissions"
+        title={isStudent ? 'My Submissions' : 'Submissions'}
+        subtitle={
+          isStudent
+            ? 'Your submitted coursework and evaluations.'
+            : 'Review and track submitted student work.'
+        }
         count={loading ? undefined : submissions.length}
         countLabel="handed in"
         action={
-          <Button onClick={() => (showForm ? closeForm() : setShowForm(true))} variant={showForm ? 'outline' : 'default'}>
-            {showForm ? 'Close' : 'Add submission'}
-          </Button>
+          isAuthenticated && (
+            <Button onClick={() => (showForm ? closeForm() : openForm())} variant={showForm ? 'outline' : 'default'}>
+              {showForm ? 'Close' : 'Add submission'}
+            </Button>
+          )
         }
       />
 
@@ -158,20 +180,30 @@ export default function SubmissionsPage() {
               </Field>
 
               <Field index={2} label="Student" htmlFor="submission-student">
-                <select
-                  id="submission-student"
-                  value={formData.student_id}
-                  onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
-                  required
-                  className="field field-select"
-                >
-                  <option value="">Select a student</option>
-                  {students.map(student => (
-                    <option key={student.id} value={student.id}>
-                      {student.first_name} {student.last_name}
-                    </option>
-                  ))}
-                </select>
+                {isStudent ? (
+                  <input
+                    id="submission-student"
+                    type="text"
+                    value={user ? `${user.firstName} ${user.lastName}` : 'Current Student'}
+                    disabled
+                    className="field cursor-not-allowed opacity-80"
+                  />
+                ) : (
+                  <select
+                    id="submission-student"
+                    value={formData.student_id}
+                    onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
+                    required
+                    className="field field-select"
+                  >
+                    <option value="">Select a student</option>
+                    {students.map(student => (
+                      <option key={student.id} value={student.id}>
+                        {student.first_name} {student.last_name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </Field>
 
               <Field index={3} label="Status" htmlFor="submission-status">
@@ -233,12 +265,13 @@ export default function SubmissionsPage() {
             { label: 'Status', width: 14 },
             { label: 'Submitted', width: 18 },
             { label: 'Content', width: 18 },
-            { label: null, width: 14 },
+            ...(isAuthenticated ? [{ label: null, width: 14 }] : []),
           ]}
         >
           {submissions.map((submission: Submission, i) => {
             const status = submission.status || 'submitted';
             const late = isOverdue(submission.assignment_id, submission.submitted_at);
+            const canManage = isAdmin || isTeacher || (isStudent && submission.student_id === user?.id);
 
             return (
               <RecordRow
@@ -261,10 +294,12 @@ export default function SubmissionsPage() {
                 <Cell title={submission.content || undefined}>
                   {submission.content || '—'}
                 </Cell>
-                <RecordActions
-                  onEdit={() => handleEdit(submission)}
-                  onDelete={() => handleDelete(submission.id)}
-                />
+                {canManage && (
+                  <RecordActions
+                    onEdit={() => handleEdit(submission)}
+                    onDelete={() => handleDelete(submission.id)}
+                  />
+                )}
               </RecordRow>
             );
           })}

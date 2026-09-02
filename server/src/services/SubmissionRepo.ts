@@ -1,16 +1,17 @@
 import { Context, Effect, Layer } from "effect";
 import { randomUUIDv7 as randomUUID } from "bun";
 import type { Submission, SubmissionInput } from "shared/dist";
-import { DatabaseError, NotFoundError } from "shared/dist";
+import { ConflictError, DatabaseError, NotFoundError } from "shared/dist";
 import { SqliteClient } from "./SqliteClient";
+import { withUniqueConstraintConflict } from "./SqliteErrors";
 
 export class SubmissionRepo extends Context.Service<SubmissionRepo, {
   readonly findAll: () => Effect.Effect<Submission[], DatabaseError>;
   readonly findById: (id: string) => Effect.Effect<Submission, NotFoundError | DatabaseError>;
   readonly findByIdOrNull: (id: string) => Effect.Effect<Submission | null, DatabaseError>;
   readonly findByStudentId: (studentId: string) => Effect.Effect<Submission[], DatabaseError>;
-  readonly create: (input: SubmissionInput) => Effect.Effect<Submission, DatabaseError>;
-  readonly update: (id: string, input: Partial<SubmissionInput>) => Effect.Effect<Submission, NotFoundError | DatabaseError>;
+  readonly create: (input: SubmissionInput) => Effect.Effect<Submission, DatabaseError | ConflictError>;
+  readonly update: (id: string, input: Partial<SubmissionInput>) => Effect.Effect<Submission, NotFoundError | DatabaseError | ConflictError>;
   readonly delete: (id: string) => Effect.Effect<boolean, DatabaseError>;
 }>()("server/SubmissionRepo") {
   static readonly layer = Layer.effect(
@@ -44,9 +45,12 @@ export class SubmissionRepo extends Context.Service<SubmissionRepo, {
       const create = Effect.fn("SubmissionRepo.create")(function*(input: SubmissionInput) {
         const now = new Date().toISOString();
         const id = randomUUID();
-        const res = yield* sqlite.queryOne<Submission>(
-          "INSERT INTO submissions (id, assignment_id, student_id, submitted_at, content, status) VALUES (?, ?, ?, ?, ?, ?) RETURNING *",
-          [id, input.assignment_id, input.student_id, now, input.content ?? null, input.status || "submitted"]
+        const res = yield* withUniqueConstraintConflict(
+          sqlite.queryOne<Submission>(
+            "INSERT INTO submissions (id, assignment_id, student_id, submitted_at, content, status) VALUES (?, ?, ?, ?, ?, ?) RETURNING *",
+            [id, input.assignment_id, input.student_id, now, input.content ?? null, input.status || "submitted"]
+          ),
+          "This student has already submitted this assignment"
         );
         if (!res) {
           return yield* new DatabaseError({ message: "Failed to create submission record" });
@@ -73,7 +77,10 @@ export class SubmissionRepo extends Context.Service<SubmissionRepo, {
         updateQuery += ` ${updates.join(", ")} WHERE id = ? RETURNING *`;
         params.push(id);
 
-        const res = yield* sqlite.queryOne<Submission>(updateQuery, params);
+        const res = yield* withUniqueConstraintConflict(
+          sqlite.queryOne<Submission>(updateQuery, params),
+          "This student has already submitted this assignment"
+        );
         if (!res) {
           return yield* new NotFoundError({ message: `Submission with id ${id} not found`, entity: "Submission", id });
         }

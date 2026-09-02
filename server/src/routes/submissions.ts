@@ -1,18 +1,29 @@
 import { Hono } from 'hono'
 import { Effect } from 'effect'
 import { SubmissionSchema, SubmissionInput, makePartial } from 'shared/dist'
+import type { AuthVariables } from '../types/auth'
 import { effectValidator } from '../middleware/validator'
 import { appRuntime } from '../services/AppRuntime'
 import { SubmissionRepo } from '../services/SubmissionRepo'
+import { isConflictError } from '../utils/errors'
 
 const SubmissionUpdateSchema = makePartial(SubmissionInput.fields)
 
-export const submissionRoutes = new Hono()
+export const submissionRoutes = new Hono<{ Variables: AuthVariables }>()
   /**
    * List all submissions
    */
   .get('/', async (c) => {
+    const user = c.get('user')
+
     try {
+      if (user?.role === 'student') {
+        const submissions = await appRuntime.runPromise(
+          SubmissionRepo.use((repo) => repo.findByStudentId(user.id))
+        )
+        return c.json({ data: submissions, count: submissions.length })
+      }
+
       const submissions = await appRuntime.runPromise(
         SubmissionRepo.use((repo) => repo.findAll())
       )
@@ -28,6 +39,7 @@ export const submissionRoutes = new Hono()
    */
   .get('/:id', async (c) => {
     const id = c.req.param('id')
+    const user = c.get('user')
 
     try {
       const submission = await appRuntime.runPromise(
@@ -37,6 +49,9 @@ export const submissionRoutes = new Hono()
       )
       if (!submission) {
         return c.json({ error: 'Submission not found' }, 404)
+      }
+      if (user?.role === 'student' && submission.student_id !== user.id) {
+        return c.json({ error: 'Forbidden: You cannot access other students\' submissions' }, 403)
       }
       return c.json({ data: submission })
     } catch (error) {
@@ -57,6 +72,9 @@ export const submissionRoutes = new Hono()
       )
       return c.json({ data: submission }, 201)
     } catch (error) {
+      if (isConflictError(error)) {
+        return c.json({ error: error.message }, 409)
+      }
       console.error('Error creating submission:', error)
       return c.json({ error: 'Failed to create submission' }, 500)
     }
@@ -68,8 +86,26 @@ export const submissionRoutes = new Hono()
   .put('/:id', effectValidator('json', SubmissionUpdateSchema), async (c) => {
     const id = c.req.param('id')
     const data = c.req.valid('json')
+    const user = c.get('user')
 
     try {
+      const existing = await appRuntime.runPromise(
+        SubmissionRepo.use((repo) => repo.findById(id)).pipe(
+          Effect.catchTag('NotFoundError', () => Effect.succeed(null))
+        )
+      )
+      if (!existing) {
+        return c.json({ error: 'Submission not found' }, 404)
+      }
+      if (user?.role === 'student') {
+        if (existing.student_id !== user.id) {
+          return c.json({ error: 'Forbidden: You can only edit your own submissions' }, 403)
+        }
+        if (data.student_id && data.student_id !== user.id) {
+          return c.json({ error: 'Forbidden: You cannot transfer submission ownership' }, 403)
+        }
+      }
+
       const submission = await appRuntime.runPromise(
         SubmissionRepo.use((repo) => repo.update(id, data)).pipe(
           Effect.catchTag('NotFoundError', () => Effect.succeed(null))
@@ -80,6 +116,9 @@ export const submissionRoutes = new Hono()
       }
       return c.json({ data: submission })
     } catch (error) {
+      if (isConflictError(error)) {
+        return c.json({ error: error.message }, 409)
+      }
       console.error('Error updating submission:', error)
       return c.json({ error: 'Failed to update submission' }, 500)
     }
@@ -90,8 +129,21 @@ export const submissionRoutes = new Hono()
    */
   .delete('/:id', async (c) => {
     const id = c.req.param('id')
+    const user = c.get('user')
 
     try {
+      const existing = await appRuntime.runPromise(
+        SubmissionRepo.use((repo) => repo.findById(id)).pipe(
+          Effect.catchTag('NotFoundError', () => Effect.succeed(null))
+        )
+      )
+      if (!existing) {
+        return c.json({ error: 'Submission not found' }, 404)
+      }
+      if (user?.role === 'student' && existing.student_id !== user.id) {
+        return c.json({ error: 'Forbidden: You can only delete your own submissions' }, 403)
+      }
+
       const deleted = await appRuntime.runPromise(
         SubmissionRepo.use((repo) => repo.delete(id))
       )

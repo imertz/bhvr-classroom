@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from "bun:test";
 import { app } from "../index";
 import { initializeDatabase, createTeacher, createStudent } from "../db/database";
 import { generateAccessToken } from "../utils/jwt";
-import type { Teacher, Student, Class, ClassDetails, Enrollment, Assignment, Submission, Grade, Attendance } from "shared";
+import type { Teacher, Student, Class, ClassDetails, Enrollment, Assignment, Submission, Grade, Attendance, AuthUser } from "shared";
 
 let adminToken = "";
 let teacherToken = "";
@@ -10,9 +10,13 @@ let studentToken = "";
 
 let testTeacherId = "";
 let testStudentId = "";
+let testTeacherEmail = "";
+let testStudentEmail = "";
 let testClassId = "";
 let testAssignmentId = "";
 let testSubmissionId = "";
+let testGradeId = "";
+let testAttendanceId = "";
 
 beforeAll(async () => {
   initializeDatabase();
@@ -27,8 +31,9 @@ beforeAll(async () => {
   adminToken = await generateAccessToken(adminUser);
 
   // Create teacher
+  testTeacherEmail = `teacher_route_${Date.now()}@example.com`;
   const teacher = await createTeacher({
-    email: `teacher_route_${Date.now()}@example.com`,
+    email: testTeacherEmail,
     first_name: "John",
     last_name: "Teacher",
     password: "Password123!"
@@ -44,8 +49,9 @@ beforeAll(async () => {
   teacherToken = await generateAccessToken(teacherUser);
 
   // Create student
+  testStudentEmail = `student_route_${Date.now()}@example.com`;
   const student = await createStudent({
-    email: `student_route_${Date.now()}@example.com`,
+    email: testStudentEmail,
     first_name: "Jane",
     last_name: "Student",
     date_of_birth: "2011-04-12",
@@ -125,6 +131,25 @@ describe("API Routes & Role-Based Access Control", () => {
       expect(body.data.id).toBe(testTeacherId);
       expect('password_hash' in body.data).toBe(false);
     });
+
+    it("should return 409 when creating a teacher with a duplicate email", async () => {
+      const res = await app.request("/api/teachers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${adminToken}`
+        },
+        body: JSON.stringify({
+          email: testTeacherEmail,
+          first_name: "Duplicate",
+          last_name: "Teacher",
+          password: "Password123!"
+        })
+      });
+
+      expect(res.status).toBe(409);
+      expect(await res.json()).toEqual({ error: "A teacher with this email already exists" });
+    });
   });
 
   describe("Students Management (/api/students)", () => {
@@ -147,6 +172,27 @@ describe("API Routes & Role-Based Access Control", () => {
       const body = (await res.json()) as { data: Student };
       expect(body.data.id).toBe(testStudentId);
       expect('password_hash' in body.data).toBe(false);
+    });
+
+    it("should return 409 when creating a student with a duplicate email", async () => {
+      const res = await app.request("/api/students", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${teacherToken}`
+        },
+        body: JSON.stringify({
+          email: testStudentEmail,
+          first_name: "Duplicate",
+          last_name: "Student",
+          date_of_birth: "2011-04-12",
+          grade_level: 7,
+          password: "Password123!"
+        })
+      });
+
+      expect(res.status).toBe(409);
+      expect(await res.json()).toEqual({ error: "A student with this email already exists" });
     });
   });
 
@@ -246,6 +292,24 @@ describe("API Routes & Role-Based Access Control", () => {
       expect(body.data.student_id).toBe(testStudentId);
       expect(body.data.class_id).toBe(testClassId);
     });
+
+    it("should return 409 for duplicate class enrollment", async () => {
+      const res = await app.request("/api/enrollments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${teacherToken}`
+        },
+        body: JSON.stringify({
+          student_id: testStudentId,
+          class_id: testClassId,
+          status: "active"
+        })
+      });
+
+      expect(res.status).toBe(409);
+      expect(await res.json()).toEqual({ error: "This student is already enrolled in this class" });
+    });
   });
 
   describe("Assignments (/api/assignments)", () => {
@@ -297,6 +361,25 @@ describe("API Routes & Role-Based Access Control", () => {
       testSubmissionId = body.data.id;
     });
 
+    it("should return 409 for a duplicate assignment submission", async () => {
+      const res = await app.request("/api/submissions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${studentToken}`
+        },
+        body: JSON.stringify({
+          assignment_id: testAssignmentId,
+          student_id: testStudentId,
+          content: "Duplicate submission",
+          status: "submitted"
+        })
+      });
+
+      expect(res.status).toBe(409);
+      expect(await res.json()).toEqual({ error: "This student has already submitted this assignment" });
+    });
+
     it("should forbid student from submitting assignment for another student", async () => {
       const res = await app.request("/api/submissions", {
         method: "POST",
@@ -313,6 +396,66 @@ describe("API Routes & Role-Based Access Control", () => {
       });
 
       expect(res.status).toBe(403);
+    });
+
+    it("should require authentication for GET /api/submissions (401)", async () => {
+      const res = await app.request("/api/submissions");
+      expect(res.status).toBe(401);
+    });
+
+    it("should scope submissions to authenticated student", async () => {
+      const res = await app.request("/api/submissions", {
+        headers: { Authorization: `Bearer ${studentToken}` }
+      });
+      expect(res.status).toBe(200);
+      // SAFETY: GET /api/submissions returns list of submissions in data
+      const body = (await res.json()) as { data: Submission[] };
+      expect(Array.isArray(body.data)).toBe(true);
+      expect(body.data.every((s) => s.student_id === testStudentId)).toBe(true);
+    });
+
+    it("should forbid another student from accessing, updating, or deleting submission (403)", async () => {
+      const otherStudent = await createStudent({
+        email: `other_student_${Date.now()}@example.com`,
+        first_name: "Other",
+        last_name: "Student",
+        date_of_birth: "2010-01-01",
+        grade_level: 9,
+        password: "OtherPassword123!"
+      });
+
+      const otherToken = await generateAccessToken({
+        id: otherStudent.id,
+        email: otherStudent.email,
+        firstName: otherStudent.first_name,
+        lastName: otherStudent.last_name,
+        role: "student",
+        userType: "student"
+      });
+
+      // GET by ID
+      const getRes = await app.request(`/api/submissions/${testSubmissionId}`, {
+        headers: { Authorization: `Bearer ${otherToken}` }
+      });
+      expect(getRes.status).toBe(403);
+
+      // PUT by ID
+      const putRes = await app.request(`/api/submissions/${testSubmissionId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${otherToken}`
+        },
+        body: JSON.stringify({ content: "Malicious update" })
+      });
+      expect(putRes.status).toBe(403);
+
+      // DELETE by ID
+      const delRes = await app.request(`/api/submissions/${testSubmissionId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${otherToken}` }
+      });
+      expect(delRes.status).toBe(403);
     });
   });
 
@@ -341,6 +484,26 @@ describe("API Routes & Role-Based Access Control", () => {
       // SAFETY: POST /api/grades returns created grade in data
       const body = (await res.json()) as { data: Grade };
       expect(body.data.points_earned).toBe(95);
+      testGradeId = body.data.id;
+    });
+
+    it("should return 409 when grading a submission twice", async () => {
+      const res = await app.request("/api/grades", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${teacherToken}`
+        },
+        body: JSON.stringify({
+          submission_id: testSubmissionId,
+          points_earned: 90,
+          feedback: "Duplicate grade",
+          graded_by: testTeacherId
+        })
+      });
+
+      expect(res.status).toBe(409);
+      expect(await res.json()).toEqual({ error: "This submission has already been graded" });
     });
 
     it("should allow student to read their own grades", async () => {
@@ -408,6 +571,28 @@ describe("API Routes & Role-Based Access Control", () => {
       // SAFETY: POST /api/attendance returns created attendance in data
       const body = (await res.json()) as { data: Attendance };
       expect(body.data.status).toBe("present");
+      testAttendanceId = body.data.id;
+    });
+
+    it("should return 409 for duplicate attendance", async () => {
+      const res = await app.request("/api/attendance", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${teacherToken}`
+        },
+        body: JSON.stringify({
+          student_id: testStudentId,
+          class_id: testClassId,
+          date: "2026-09-01",
+          status: "present"
+        })
+      });
+
+      expect(res.status).toBe(409);
+      expect(await res.json()).toEqual({
+        error: "Attendance has already been recorded for this student, class, and date"
+      });
     });
 
     it("should allow student to read their own attendance records", async () => {
@@ -419,6 +604,56 @@ describe("API Routes & Role-Based Access Control", () => {
       const body = (await res.json()) as { data: Attendance[] };
       expect(Array.isArray(body.data)).toBe(true);
       expect(body.data.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("should forbid student from accessing another student's grade by ID (403)", async () => {
+      const otherStudent = await createStudent({
+        email: `other_student_grades_${Date.now()}@example.com`,
+        first_name: "Other2",
+        last_name: "Student2",
+        date_of_birth: "2010-01-01",
+        grade_level: 9,
+        password: "OtherPassword123!"
+      });
+
+      const otherToken = await generateAccessToken({
+        id: otherStudent.id,
+        email: otherStudent.email,
+        firstName: otherStudent.first_name,
+        lastName: otherStudent.last_name,
+        role: "student",
+        userType: "student"
+      });
+
+      const res = await app.request(`/api/grades/${testGradeId}`, {
+        headers: { Authorization: `Bearer ${otherToken}` }
+      });
+      expect(res.status).toBe(403);
+    });
+
+    it("should forbid student from accessing another student's attendance by ID (403)", async () => {
+      const otherStudent = await createStudent({
+        email: `other_student_attn_${Date.now()}@example.com`,
+        first_name: "Other3",
+        last_name: "Student3",
+        date_of_birth: "2010-01-01",
+        grade_level: 9,
+        password: "OtherPassword123!"
+      });
+
+      const otherToken = await generateAccessToken({
+        id: otherStudent.id,
+        email: otherStudent.email,
+        firstName: otherStudent.first_name,
+        lastName: otherStudent.last_name,
+        role: "student",
+        userType: "student"
+      });
+
+      const res = await app.request(`/api/attendance/${testAttendanceId}`, {
+        headers: { Authorization: `Bearer ${otherToken}` }
+      });
+      expect(res.status).toBe(403);
     });
 
     it("should allow student to retrieve their enrolled classes", async () => {
@@ -433,4 +668,3 @@ describe("API Routes & Role-Based Access Control", () => {
     });
   });
 });
-

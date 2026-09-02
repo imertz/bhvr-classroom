@@ -33,16 +33,17 @@ export class AnnouncementRepo extends Context.Service<AnnouncementRepo, {
         return announcement;
       });
 
+      const normalizeIsoDateTime = (dateStr: string): string => {
+        if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(dateStr)) {
+          return `${dateStr}:00`;
+        }
+        return dateStr;
+      };
+
       const create = Effect.fn("AnnouncementRepo.create")(function*(input: AnnouncementInput) {
         const now = new Date().toISOString();
         const id = randomUUID();
-        let expiresIso: string | null = null;
-        if (input.expires_at) {
-          expiresIso = input.expires_at;
-          if (!/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(expiresIso)) {
-            expiresIso = expiresIso + ":00";
-          }
-        }
+        const expiresIso = input.expires_at ? normalizeIsoDateTime(input.expires_at) : null;
 
         const res = yield* sqlite.queryOne<Announcement>(
           "INSERT INTO announcements (id, class_id, teacher_id, title, content, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *",
@@ -63,10 +64,7 @@ export class AnnouncementRepo extends Context.Service<AnnouncementRepo, {
           if (value !== undefined) {
             if (key === "expires_at") {
               if (value) {
-                let expiresIso = String(value);
-                if (!/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(expiresIso)) {
-                  expiresIso = expiresIso + ":00";
-                }
+                const expiresIso = normalizeIsoDateTime(String(value));
                 updates.push("expires_at = ?");
                 params.push(expiresIso);
               } else {

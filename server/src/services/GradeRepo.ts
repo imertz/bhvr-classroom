@@ -1,16 +1,17 @@
 import { Context, Effect, Layer } from "effect";
 import { randomUUIDv7 as randomUUID } from "bun";
 import type { Grade, GradeInput } from "shared/dist";
-import { DatabaseError, NotFoundError } from "shared/dist";
+import { ConflictError, DatabaseError, NotFoundError } from "shared/dist";
 import { SqliteClient } from "./SqliteClient";
+import { withUniqueConstraintConflict } from "./SqliteErrors";
 
 export class GradeRepo extends Context.Service<GradeRepo, {
   readonly findAll: () => Effect.Effect<Grade[], DatabaseError>;
   readonly findById: (id: string) => Effect.Effect<Grade, NotFoundError | DatabaseError>;
   readonly findByIdOrNull: (id: string) => Effect.Effect<Grade | null, DatabaseError>;
   readonly findByStudentId: (studentId: string) => Effect.Effect<Grade[], DatabaseError>;
-  readonly create: (input: GradeInput) => Effect.Effect<Grade, DatabaseError>;
-  readonly update: (id: string, input: Partial<GradeInput>) => Effect.Effect<Grade, NotFoundError | DatabaseError>;
+  readonly create: (input: GradeInput) => Effect.Effect<Grade, DatabaseError | ConflictError>;
+  readonly update: (id: string, input: Partial<GradeInput>) => Effect.Effect<Grade, NotFoundError | DatabaseError | ConflictError>;
   readonly delete: (id: string) => Effect.Effect<boolean, DatabaseError>;
 }>()("server/GradeRepo") {
   static readonly layer = Layer.effect(
@@ -47,9 +48,12 @@ export class GradeRepo extends Context.Service<GradeRepo, {
       const create = Effect.fn("GradeRepo.create")(function*(input: GradeInput) {
         const now = new Date().toISOString();
         const id = randomUUID();
-        const res = yield* sqlite.queryOne<Grade>(
-          "INSERT INTO grades (id, submission_id, points_earned, feedback, graded_at, graded_by) VALUES (?, ?, ?, ?, ?, ?) RETURNING *",
-          [id, input.submission_id, input.points_earned, input.feedback ?? null, now, input.graded_by]
+        const res = yield* withUniqueConstraintConflict(
+          sqlite.queryOne<Grade>(
+            "INSERT INTO grades (id, submission_id, points_earned, feedback, graded_at, graded_by) VALUES (?, ?, ?, ?, ?, ?) RETURNING *",
+            [id, input.submission_id, input.points_earned, input.feedback ?? null, now, input.graded_by]
+          ),
+          "This submission has already been graded"
         );
         if (!res) {
           return yield* new DatabaseError({ message: "Failed to create grade record" });
@@ -72,7 +76,10 @@ export class GradeRepo extends Context.Service<GradeRepo, {
         updateQuery += " WHERE id = ? RETURNING *";
         params.push(id);
 
-        const res = yield* sqlite.queryOne<Grade>(updateQuery, params);
+        const res = yield* withUniqueConstraintConflict(
+          sqlite.queryOne<Grade>(updateQuery, params),
+          "This submission has already been graded"
+        );
         if (!res) {
           return yield* new NotFoundError({ message: `Grade with id ${id} not found`, entity: "Grade", id });
         }

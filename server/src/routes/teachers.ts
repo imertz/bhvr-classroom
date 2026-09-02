@@ -4,6 +4,7 @@ import { TeacherSchema, TeacherInput, makePartial } from 'shared/dist'
 import { effectValidator } from '../middleware/validator'
 import { appRuntime } from '../services/AppRuntime'
 import { TeacherRepo } from '../services/TeacherRepo'
+import { isConflictError } from '../utils/errors'
 
 const TeacherUpdateSchema = makePartial(TeacherInput.fields)
 
@@ -57,6 +58,9 @@ export const teacherRoutes = new Hono()
       )
       return c.json({ data: teacher }, 201)
     } catch (error) {
+      if (isConflictError(error)) {
+        return c.json({ error: error.message }, 409)
+      }
       console.error('Error creating teacher:', error)
       return c.json({ error: 'Failed to create teacher' }, 500)
     }
@@ -80,6 +84,9 @@ export const teacherRoutes = new Hono()
       }
       return c.json({ data: teacher })
     } catch (error) {
+      if (isConflictError(error)) {
+        return c.json({ error: error.message }, 409)
+      }
       console.error('Error updating teacher:', error)
       return c.json({ error: 'Failed to update teacher' }, 500)
     }

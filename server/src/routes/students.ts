@@ -4,6 +4,7 @@ import { StudentSchema, StudentInput, makePartial } from 'shared/dist'
 import { effectValidator } from '../middleware/validator'
 import { appRuntime } from '../services/AppRuntime'
 import { StudentRepo } from '../services/StudentRepo'
+import { isConflictError } from '../utils/errors'
 
 const StudentUpdateSchema = makePartial(StudentInput.fields)
 
@@ -57,6 +58,9 @@ export const studentRoutes = new Hono()
       )
       return c.json({ data: student }, 201)
     } catch (error) {
+      if (isConflictError(error)) {
+        return c.json({ error: error.message }, 409)
+      }
       console.error('Error creating student:', error)
       return c.json({ error: 'Failed to create student' }, 500)
     }
@@ -80,6 +84,9 @@ export const studentRoutes = new Hono()
       }
       return c.json({ data: student })
     } catch (error) {
+      if (isConflictError(error)) {
+        return c.json({ error: error.message }, 409)
+      }
       console.error('Error updating student:', error)
       return c.json({ error: 'Failed to update student' }, 500)
     }

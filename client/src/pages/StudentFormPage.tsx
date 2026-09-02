@@ -37,7 +37,7 @@ export default function StudentFormPage() {
         email: currentStudent.email,
         first_name: currentStudent.first_name,
         last_name: currentStudent.last_name,
-        date_of_birth: currentStudent.date_of_birth.split('T')[0],
+        date_of_birth: currentStudent.date_of_birth ? currentStudent.date_of_birth.slice(0, 10) : '',
         grade_level: currentStudent.grade_level,
         password: ''
       }
@@ -80,7 +80,8 @@ export default function StudentFormPage() {
         if (formData.email !== currentStudent?.email) updateData.email = formData.email;
         if (formData.first_name !== currentStudent?.first_name) updateData.first_name = formData.first_name;
         if (formData.last_name !== currentStudent?.last_name) updateData.last_name = formData.last_name;
-        if (formData.date_of_birth !== currentStudent?.date_of_birth.split('T')[0]) {
+        const currentDob = currentStudent?.date_of_birth ? currentStudent.date_of_birth.slice(0, 10) : '';
+        if (formData.date_of_birth !== currentDob) {
           updateData.date_of_birth = formData.date_of_birth;
         }
         if (formData.grade_level !== currentStudent?.grade_level) updateData.grade_level = formData.grade_level;

@@ -93,8 +93,8 @@ app.post('/api/enrollments', requireAuth, requireTeacher)
 app.put('/api/enrollments/*', requireAuth, requireTeacher)
 app.delete('/api/enrollments/*', requireAuth, requireTeacher)
 
-// Submissions routes - public read, authenticated write with role checks
-app.get('/api/submissions/*', optionalAuthMiddleware)
+// Submissions routes - authenticated read and write with role checks
+app.get('/api/submissions/*', requireAuth)
 app.post('/api/submissions', requireAuth, async (c, next) => {
 	const user = c.get('user')
 	if (!user) {

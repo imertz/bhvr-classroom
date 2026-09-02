@@ -89,13 +89,20 @@ export class AuthService extends Context.Service<AuthService, {
           return;
         }
 
-        yield* teacherRepo.create({
+        const created = yield* teacherRepo.create({
           email: adminEmail,
           password: adminPassword,
           first_name: "Admin",
           last_name: "User",
           role: "admin"
-        });
+        }).pipe(
+          Effect.as(true),
+          Effect.catchTag("ConflictError", () => Effect.succeed(false))
+        );
+
+        if (!created) {
+          return;
+        }
 
         console.log("Admin user created successfully:");
         console.log(`Email: ${adminEmail}`);

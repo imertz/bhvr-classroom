@@ -1,8 +1,9 @@
 import { Context, Effect, Layer } from "effect";
 import { randomUUIDv7 as randomUUID } from "bun";
 import type { Teacher, TeacherInput } from "shared/dist";
-import { DatabaseError, NotFoundError } from "shared/dist";
+import { ConflictError, DatabaseError, NotFoundError } from "shared/dist";
 import { SqliteClient } from "./SqliteClient";
+import { withUniqueConstraintConflict } from "./SqliteErrors";
 
 export interface TeacherRecord extends Teacher {
   password_hash: string;
@@ -13,8 +14,8 @@ export class TeacherRepo extends Context.Service<TeacherRepo, {
   readonly findById: (id: string) => Effect.Effect<Teacher, NotFoundError | DatabaseError>;
   readonly findByIdOrNull: (id: string) => Effect.Effect<Teacher | null, DatabaseError>;
   readonly findByEmail: (email: string) => Effect.Effect<TeacherRecord | null, DatabaseError>;
-  readonly create: (input: TeacherInput) => Effect.Effect<Teacher, DatabaseError>;
-  readonly update: (id: string, input: Partial<TeacherInput>) => Effect.Effect<Teacher, NotFoundError | DatabaseError>;
+  readonly create: (input: TeacherInput) => Effect.Effect<Teacher, DatabaseError | ConflictError>;
+  readonly update: (id: string, input: Partial<TeacherInput>) => Effect.Effect<Teacher, NotFoundError | DatabaseError | ConflictError>;
   readonly delete: (id: string) => Effect.Effect<boolean, DatabaseError>;
 }>()("server/TeacherRepo") {
   static readonly layer = Layer.effect(
@@ -62,9 +63,12 @@ export class TeacherRepo extends Context.Service<TeacherRepo, {
         });
         const role = input.role || "teacher";
 
-        const res = yield* sqlite.queryOne<Teacher>(
-          "INSERT INTO teachers (id, email, password_hash, first_name, last_name, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, email, first_name, last_name, role, created_at, updated_at",
-          [id, input.email, hashedPassword, input.first_name, input.last_name, role, now, now]
+        const res = yield* withUniqueConstraintConflict(
+          sqlite.queryOne<Teacher>(
+            "INSERT INTO teachers (id, email, password_hash, first_name, last_name, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, email, first_name, last_name, role, created_at, updated_at",
+            [id, input.email, hashedPassword, input.first_name, input.last_name, role, now, now]
+          ),
+          "A teacher with this email already exists"
         );
         if (!res) {
           return yield* new DatabaseError({ message: "Failed to insert teacher record" });
@@ -78,13 +82,15 @@ export class TeacherRepo extends Context.Service<TeacherRepo, {
         const params: (string | number | null)[] = [now];
 
         for (const [key, value] of Object.entries(input)) {
-          if (key === "password" && value) {
-            const hashedPassword = yield* Effect.tryPromise({
-              try: () => Bun.password.hash(String(value)),
-              catch: (e) => new DatabaseError({ message: "Failed to hash password", cause: e })
-            });
-            updateQuery += `, password_hash = ?`;
-            params.push(hashedPassword);
+          if (key === "password") {
+            if (value) {
+              const hashedPassword = yield* Effect.tryPromise({
+                try: () => Bun.password.hash(String(value)),
+                catch: (e) => new DatabaseError({ message: "Failed to hash password", cause: e })
+              });
+              updateQuery += `, password_hash = ?`;
+              params.push(hashedPassword);
+            }
           } else if (value !== undefined) {
             updateQuery += `, ${key.replace(/([A-Z])/g, "_$1").toLowerCase()} = ?`;
             params.push(value);
@@ -94,7 +100,10 @@ export class TeacherRepo extends Context.Service<TeacherRepo, {
         updateQuery += " WHERE id = ? RETURNING id, email, first_name, last_name, role, created_at, updated_at";
         params.push(id);
 
-        const res = yield* sqlite.queryOne<Teacher>(updateQuery, params);
+        const res = yield* withUniqueConstraintConflict(
+          sqlite.queryOne<Teacher>(updateQuery, params),
+          "A teacher with this email already exists"
+        );
         if (!res) {
           return yield* new NotFoundError({ message: `Teacher with id ${id} not found`, entity: "Teacher", id });
         }
@@ -118,4 +127,3 @@ export class TeacherRepo extends Context.Service<TeacherRepo, {
     })
   );
 }
-

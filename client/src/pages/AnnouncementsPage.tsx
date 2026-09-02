@@ -19,9 +19,11 @@ import {
 } from '../components/ui/record';
 import { ordinal } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
+import { usePermissions } from '../hooks/usePermissions';
 import type { Announcement, AnnouncementInput } from 'shared/dist';
 
 export default function AnnouncementsPage() {
+  const { canCreate, canEdit, canDelete } = usePermissions();
   const { data: announcements = [], isLoading: loadingAnnouncements, error: announcementsError } = useAnnouncements();
   const { data: classes = [], isLoading: loadingClasses } = useClasses();
   const { data: teachers = [], isLoading: loadingTeachers } = useTeachers();
@@ -118,9 +120,11 @@ export default function AnnouncementsPage() {
         count={loading ? undefined : announcements.length}
         countLabel="posted"
         action={
-          <Button onClick={() => (showForm ? closeForm() : setShowForm(true))} variant={showForm ? 'outline' : 'default'}>
-            {showForm ? 'Close' : 'Post announcement'}
-          </Button>
+          canCreate && (
+            <Button onClick={() => (showForm ? closeForm() : setShowForm(true))} variant={showForm ? 'outline' : 'default'}>
+              {showForm ? 'Close' : 'Post announcement'}
+            </Button>
+          )
         }
       />
 
@@ -273,22 +277,28 @@ export default function AnnouncementsPage() {
                   )}
                 </div>
 
-                <div className="flex items-start gap-4 lg:justify-end">
-                  <button
-                    type="button"
-                    onClick={() => handleEdit(announcement)}
-                    className="micro transition-colors duration-100 hover:text-signal focus-visible:text-signal"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(announcement.id)}
-                    className="micro transition-colors duration-100 hover:text-destructive focus-visible:text-destructive"
-                  >
-                    Delete
-                  </button>
-                </div>
+                {(canEdit || canDelete) && (
+                  <div className="flex items-start gap-4 lg:justify-end">
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(announcement)}
+                        className="micro transition-colors duration-100 hover:text-signal focus-visible:text-signal"
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(announcement.id)}
+                        className="micro transition-colors duration-100 hover:text-destructive focus-visible:text-destructive"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                )}
               </article>
             );
           })}

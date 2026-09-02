@@ -11,7 +11,8 @@ import {
   deleteStudent,
   createClass,
   createAnnouncement,
-  updateAnnouncement
+  updateAnnouncement,
+  createAssignment
 } from "../db/database";
 
 beforeAll(() => {
@@ -123,5 +124,55 @@ describe("Database Layer Operations & Integrity", () => {
 
     expect(updated?.created_at).toBe(originalCreatedAt);
     expect(updated?.title).toBe("History Exam Rescheduled");
+  });
+
+  it("should handle update with empty password string safely without SQL error", async () => {
+    const email = `empty_pass_teacher_${Date.now()}@example.com`;
+    const teacher = await createTeacher({
+      email,
+      first_name: "Teacher",
+      last_name: "PassTest",
+      password: "InitialPassword1!"
+    });
+
+    // Submitting with empty password should not trigger "no such column: password"
+    const updated = await updateTeacher(teacher.id, {
+      first_name: "UpdatedFirstName",
+      password: ""
+    });
+    expect(updated?.first_name).toBe("UpdatedFirstName");
+
+    // Old password should still be valid
+    const record = await findTeacherByEmail(email);
+    expect(record?.password_hash).toBeDefined();
+    const isOldValid = await Bun.password.verify("InitialPassword1!", record!.password_hash);
+    expect(isOldValid).toBe(true);
+  });
+
+  it("should safely normalize ISO due_date with Z without appending :00", async () => {
+    const teacher = await createTeacher({
+      email: `iso_teacher_${Date.now()}@example.com`,
+      first_name: "ISO",
+      last_name: "Teacher",
+      password: "Password123!"
+    });
+
+    const class_ = await createClass({
+      name: "Physics 101",
+      subject: "Physics",
+      teacher_id: teacher.id
+    });
+
+    const standardIsoDate = "2026-10-15T18:00:00Z";
+    const assignment = await createAssignment({
+      class_id: class_.id,
+      title: "Lab Report",
+      type: "homework",
+      points_possible: 100,
+      due_date: standardIsoDate
+    });
+
+    expect(assignment.due_date).toBe(standardIsoDate);
+    expect(assignment.due_date.endsWith(":00")).toBe(false);
   });
 });

@@ -38,13 +38,17 @@ export class AssignmentRepo extends Context.Service<AssignmentRepo, {
         return yield* sqlite.queryAll<Assignment>("SELECT * FROM assignments WHERE class_id = ?", [classId]);
       });
 
+      const normalizeIsoDateTime = (dateStr: string): string => {
+        if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(dateStr)) {
+          return `${dateStr}:00`;
+        }
+        return dateStr;
+      };
+
       const create = Effect.fn("AssignmentRepo.create")(function*(input: AssignmentInput) {
         const now = new Date().toISOString();
         const id = randomUUID();
-        let dueDateIso = input.due_date;
-        if (!/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(dueDateIso)) {
-          dueDateIso = dueDateIso + ":00";
-        }
+        const dueDateIso = normalizeIsoDateTime(input.due_date);
 
         const res = yield* sqlite.queryOne<Assignment>(
           "INSERT INTO assignments (id, class_id, title, description, type, points_possible, due_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *",
@@ -64,10 +68,7 @@ export class AssignmentRepo extends Context.Service<AssignmentRepo, {
         for (const [key, value] of Object.entries(input)) {
           if (value !== undefined) {
             if (key === "due_date" && value) {
-              let dueDateIso = String(value);
-              if (!/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(dueDateIso)) {
-                dueDateIso += ":00";
-              }
+              const dueDateIso = normalizeIsoDateTime(String(value));
               updateQuery += `, due_date = ?`;
               params.push(dueDateIso);
             } else {

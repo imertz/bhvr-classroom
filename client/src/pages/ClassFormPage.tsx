@@ -99,9 +99,10 @@ export default function ClassFormPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    const isNullableField = name === 'room_number' || name === 'schedule';
     updateFormData(prev => ({
       ...prev,
-      [name]: value === '' ? null : value
+      [name]: value === '' && isNullableField ? null : value
     }));
   };
 
