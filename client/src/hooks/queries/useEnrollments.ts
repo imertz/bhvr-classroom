@@ -14,8 +14,8 @@ export function useEnrollments() {
   return useQuery({
     queryKey: enrollmentKeys.list(),
     queryFn: async (): Promise<Enrollment[]> => {
-      const res = await unwrapJson(client.api.enrollments.$get());
-      return res.data as Enrollment[];
+      const res = await unwrapJson<{ data: Enrollment[] }>(client.api.enrollments.$get());
+      return res.data;
     },
   });
 }
@@ -24,8 +24,8 @@ export function useEnrollment(id?: string) {
   return useQuery({
     queryKey: enrollmentKeys.detail(id || ''),
     queryFn: async (): Promise<Enrollment> => {
-      const res = await unwrapJson(client.api.enrollments[':id'].$get({ param: { id: id! } }));
-      return res.data as Enrollment;
+      const res = await unwrapJson<{ data: Enrollment }>(client.api.enrollments[':id'].$get({ param: { id: id! } }));
+      return res.data;
     },
     enabled: Boolean(id),
   });
@@ -35,8 +35,8 @@ export function useCreateEnrollment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: EnrollmentInput): Promise<Enrollment> => {
-      const res = await unwrapJson(client.api.enrollments.$post({ json: data }));
-      return res.data as Enrollment;
+      const res = await unwrapJson<{ data: Enrollment }>(client.api.enrollments.$post({ json: data }));
+      return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: enrollmentKeys.all });
@@ -48,8 +48,8 @@ export function useUpdateEnrollment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<EnrollmentInput> }): Promise<Enrollment> => {
-      const res = await unwrapJson(client.api.enrollments[':id'].$put({ param: { id }, json: data }));
-      return res.data as Enrollment;
+      const res = await unwrapJson<{ data: Enrollment }>(client.api.enrollments[':id'].$put({ param: { id }, json: data }));
+      return res.data;
     },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: enrollmentKeys.all });

@@ -14,8 +14,8 @@ export function useAttendanceRecords() {
   return useQuery({
     queryKey: attendanceKeys.list(),
     queryFn: async (): Promise<Attendance[]> => {
-      const res = await unwrapJson(client.api.attendance.$get());
-      return res.data as Attendance[];
+      const res = await unwrapJson<{ data: Attendance[] }>(client.api.attendance.$get());
+      return res.data;
     },
   });
 }
@@ -24,8 +24,8 @@ export function useAttendanceRecord(id?: string) {
   return useQuery({
     queryKey: attendanceKeys.detail(id || ''),
     queryFn: async (): Promise<Attendance> => {
-      const res = await unwrapJson(client.api.attendance[':id'].$get({ param: { id: id! } }));
-      return res.data as Attendance;
+      const res = await unwrapJson<{ data: Attendance }>(client.api.attendance[':id'].$get({ param: { id: id! } }));
+      return res.data;
     },
     enabled: Boolean(id),
   });
@@ -35,8 +35,8 @@ export function useCreateAttendance() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: AttendanceInput): Promise<Attendance> => {
-      const res = await unwrapJson(client.api.attendance.$post({ json: data }));
-      return res.data as Attendance;
+      const res = await unwrapJson<{ data: Attendance }>(client.api.attendance.$post({ json: data }));
+      return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: attendanceKeys.all });
@@ -48,8 +48,8 @@ export function useUpdateAttendance() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<AttendanceInput> }): Promise<Attendance> => {
-      const res = await unwrapJson(client.api.attendance[':id'].$put({ param: { id }, json: data }));
-      return res.data as Attendance;
+      const res = await unwrapJson<{ data: Attendance }>(client.api.attendance[':id'].$put({ param: { id }, json: data }));
+      return res.data;
     },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: attendanceKeys.all });

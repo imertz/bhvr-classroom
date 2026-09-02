@@ -15,7 +15,7 @@ export default function ClassFormPage() {
   const updateClassMutation = useUpdateClass();
 
   const loading = loadingClass || createClassMutation.isPending || updateClassMutation.isPending;
-  const error = (createClassMutation.error || updateClassMutation.error) as Error | null;
+  const error = createClassMutation.error || updateClassMutation.error;
 
   const emptyFormData: ClassInput = {
     name: '',
@@ -52,7 +52,7 @@ export default function ClassFormPage() {
 
       return {
         id,
-        data: typeof update === 'function' ? update(previousData) : update
+        data: update instanceof Function ? update(previousData) : update
       };
     });
   };

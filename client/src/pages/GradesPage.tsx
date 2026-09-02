@@ -26,7 +26,7 @@ export default function GradesPage() {
   const deleteGradeMutation = useDeleteGrade();
 
   const loading = loadingGrades || loadingSubmissions || loadingAssignments || loadingStudents || loadingTeachers;
-  const error = (gradesError || createGradeMutation.error || updateGradeMutation.error || deleteGradeMutation.error) as Error | null;
+  const error = gradesError || createGradeMutation.error || updateGradeMutation.error || deleteGradeMutation.error;
 
   const { isAdmin, isTeacher, isStudent } = usePermissions();
   const canManageGrades = isAdmin || isTeacher;

@@ -1,6 +1,7 @@
 {
   "name": "bhvr-classroom",
   "version": "0.3.1",
+  "type": "module",
   "description": "A monorepo template built with Bun, Hono, Vite, and React",
   "author": "Steve Simkins",
   "license": "MIT",
@@ -18,8 +19,9 @@
     "build:client": "cd client && bun run build",
     "build:shared": "cd shared && bun run build",
     "build:server": "cd server && bun run build",
-    "build": "bun run build:shared && bun run build:server && bun run build:client",
-    "lint": "cd client && bun run lint",
+    "lint": "bun run lint:oxlint && bun run lint:eslint",
+    "lint:oxlint": "oxlint",
+    "lint:eslint": "cd client && bun run lint",
     "test": "bun test",
     "postinstall": "bun run build:shared && bun run build:server"
   },

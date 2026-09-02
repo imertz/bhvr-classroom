@@ -14,8 +14,8 @@ export function useAssignments() {
   return useQuery({
     queryKey: assignmentKeys.list(),
     queryFn: async (): Promise<Assignment[]> => {
-      const res = await unwrapJson(client.api.assignments.$get());
-      return res.data as Assignment[];
+      const res = await unwrapJson<{ data: Assignment[] }>(client.api.assignments.$get());
+      return res.data;
     },
   });
 }
@@ -24,8 +24,8 @@ export function useAssignment(id?: string) {
   return useQuery({
     queryKey: assignmentKeys.detail(id || ''),
     queryFn: async (): Promise<Assignment> => {
-      const res = await unwrapJson(client.api.assignments[':id'].$get({ param: { id: id! } }));
-      return res.data as Assignment;
+      const res = await unwrapJson<{ data: Assignment }>(client.api.assignments[':id'].$get({ param: { id: id! } }));
+      return res.data;
     },
     enabled: Boolean(id),
   });
@@ -35,8 +35,8 @@ export function useCreateAssignment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: AssignmentInput): Promise<Assignment> => {
-      const res = await unwrapJson(client.api.assignments.$post({ json: data }));
-      return res.data as Assignment;
+      const res = await unwrapJson<{ data: Assignment }>(client.api.assignments.$post({ json: data }));
+      return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: assignmentKeys.all });
@@ -48,8 +48,8 @@ export function useUpdateAssignment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<AssignmentInput> }): Promise<Assignment> => {
-      const res = await unwrapJson(client.api.assignments[':id'].$put({ param: { id }, json: data }));
-      return res.data as Assignment;
+      const res = await unwrapJson<{ data: Assignment }>(client.api.assignments[':id'].$put({ param: { id }, json: data }));
+      return res.data;
     },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: assignmentKeys.all });

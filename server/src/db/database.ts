@@ -66,13 +66,18 @@ export function initializeDatabase() {
   }
 }
 
+interface TableColumnInfo {
+  name: string;
+}
+
 function runMigrations() {
   try {
     console.log("Running database migrations...");
     
     // Check if role column exists in teachers table
-    const teachersInfo = db.prepare("PRAGMA table_info(teachers)").all() as any[];
-    const hasRoleColumn = teachersInfo.some((col: any) => col.name === 'role');
+    const teachersInfo = db.prepare("PRAGMA table_info(teachers)").all();
+    // SAFETY: SQLite PRAGMA table_info returns array of column info objects
+    const hasRoleColumn = (teachersInfo as TableColumnInfo[]).some((col) => col.name === 'role');
     
     if (!hasRoleColumn) {
       console.log("Adding role column to teachers table...");
@@ -82,8 +87,9 @@ function runMigrations() {
     }
     
     // Check if role column exists in students table
-    const studentsInfo = db.prepare("PRAGMA table_info(students)").all() as any[];
-    const hasStudentRoleColumn = studentsInfo.some((col: any) => col.name === 'role');
+    const studentsInfo = db.prepare("PRAGMA table_info(students)").all();
+    // SAFETY: SQLite PRAGMA table_info returns array of column info objects
+    const hasStudentRoleColumn = (studentsInfo as TableColumnInfo[]).some((col) => col.name === 'role');
     
     if (!hasStudentRoleColumn) {
       console.log("Adding role column to students table...");
@@ -118,11 +124,12 @@ export async function createTeacher(data: TeacherInput): Promise<Teacher> {
   const id = randomUUID();
   if (!data.password) throw new Error("Password is required");
   const hashedPassword = await Bun.password.hash(data.password);
-  const role = (data as any).role || 'teacher'; // Default to teacher if not specified
+  const role = data.role || 'teacher';
 
   const query = db.query(
     "INSERT INTO teachers (id, email, password_hash, first_name, last_name, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, email, first_name, last_name, role, created_at, updated_at"
   );
+  // SAFETY: SQLite RETURNING clause guarantees returning the created teacher record
   return query.get(id, data.email, hashedPassword, data.first_name, data.last_name, role, now, now) as Teacher;
 }
 
@@ -133,6 +140,7 @@ export async function createTeacher(data: TeacherInput): Promise<Teacher> {
  */
 export async function findTeacherById(id: string): Promise<Teacher | null> {
   const query = db.query("SELECT id, email, first_name, last_name, role, created_at, updated_at FROM teachers WHERE id = ?");
+  // SAFETY: SQLite query returns matching teacher or null
   return query.get(id) as Teacher | null;
 }
 
@@ -143,6 +151,7 @@ export async function findTeacherById(id: string): Promise<Teacher | null> {
  */
 export async function findTeacherByEmail(email: string): Promise<TeacherRecord | null> {
   const query = db.query("SELECT * FROM teachers WHERE email = ?");
+  // SAFETY: SQLite query returns matching teacher record with password_hash or null
   return query.get(email) as TeacherRecord | null;
 }
 
@@ -152,6 +161,7 @@ export async function findTeacherByEmail(email: string): Promise<TeacherRecord |
  */
 export async function findAllTeachers(): Promise<Teacher[]> {
   const query = db.query("SELECT id, email, first_name, last_name, role, created_at, updated_at FROM teachers");
+  // SAFETY: SQLite query returns array of teacher records
   return query.all() as Teacher[];
 }
 
@@ -164,11 +174,11 @@ export async function findAllTeachers(): Promise<Teacher[]> {
 export async function updateTeacher(id: string, data: Partial<TeacherInput>): Promise<Teacher | null> {
   const now = new Date().toISOString();
   let updateQuery = "UPDATE teachers SET updated_at = ?";
-  const params: any[] = [now];
+  const params: (string | number | null)[] = [now];
 
   for (const [key, value] of Object.entries(data)) {
     if (key === 'password' && value) {
-      const hashedPassword = await Bun.password.hash(value);
+      const hashedPassword = await Bun.password.hash(String(value));
       updateQuery += `, password_hash = ?`;
       params.push(hashedPassword);
     } else if (value !== undefined) {
@@ -181,6 +191,7 @@ export async function updateTeacher(id: string, data: Partial<TeacherInput>): Pr
   params.push(id);
 
   const query = db.query(updateQuery);
+  // SAFETY: SQLite RETURNING clause returns updated teacher record or null
   return query.get(...params) as Teacher | null;
 }
 
@@ -206,10 +217,11 @@ export async function createStudent(data: StudentInput): Promise<Student> {
   const now = new Date().toISOString();
   const id = randomUUID();
   const passwordHash = data.password ? await Bun.password.hash(data.password) : null;
-  const role = (data as any).role || 'student';
+  const role = data.role || 'student';
   const query = db.query(
     "INSERT INTO students (id, email, password_hash, first_name, last_name, date_of_birth, grade_level, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, email, first_name, last_name, date_of_birth, grade_level, role, created_at, updated_at"
   );
+  // SAFETY: SQLite RETURNING clause guarantees returning the created student record
   return query.get(id, data.email, passwordHash, data.first_name, data.last_name, data.date_of_birth, data.grade_level, role, now, now) as Student;
 }
 
@@ -220,6 +232,7 @@ export async function createStudent(data: StudentInput): Promise<Student> {
  */
 export async function findStudentById(id: string): Promise<Student | null> {
   const query = db.query("SELECT id, email, first_name, last_name, date_of_birth, grade_level, role, created_at, updated_at FROM students WHERE id = ?");
+  // SAFETY: SQLite query returns matching student or null
   return query.get(id) as Student | null;
 }
 
@@ -230,6 +243,7 @@ export async function findStudentById(id: string): Promise<Student | null> {
  */
 export async function findStudentByEmail(email: string): Promise<StudentRecord | null> {
   const query = db.query("SELECT * FROM students WHERE email = ?");
+  // SAFETY: SQLite query returns matching student record with password_hash or null
   return query.get(email) as StudentRecord | null;
 }
 
@@ -239,6 +253,7 @@ export async function findStudentByEmail(email: string): Promise<StudentRecord |
  */
 export async function findAllStudents(): Promise<Student[]> {
   const query = db.query("SELECT id, email, first_name, last_name, date_of_birth, grade_level, role, created_at, updated_at FROM students");
+  // SAFETY: SQLite query returns array of student records
   return query.all() as Student[];
 }
 
@@ -251,11 +266,11 @@ export async function findAllStudents(): Promise<Student[]> {
 export async function updateStudent(id: string, data: Partial<StudentInput>): Promise<Student | null> {
   const now = new Date().toISOString();
   let updateQuery = "UPDATE students SET updated_at = ?";
-  const params: any[] = [now];
+  const params: (string | number | null)[] = [now];
 
   for (const [key, value] of Object.entries(data)) {
     if (key === 'password' && value) {
-      const hashedPassword = await Bun.password.hash(value as string);
+      const hashedPassword = await Bun.password.hash(String(value));
       updateQuery += `, password_hash = ?`;
       params.push(hashedPassword);
     } else if (value !== undefined) {
@@ -268,6 +283,7 @@ export async function updateStudent(id: string, data: Partial<StudentInput>): Pr
   params.push(id);
 
   const query = db.query(updateQuery);
+  // SAFETY: SQLite RETURNING clause returns updated student record or null
   return query.get(...params) as Student | null;
 }
 
@@ -293,6 +309,7 @@ export async function findStudentsByClassId(classId: string): Promise<Student[]>
         JOIN enrollments e ON s.id = e.student_id
         WHERE e.class_id = ?
     `);
+  // SAFETY: SQLite query returns array of enrolled student records
   return query.all(classId) as Student[];
 }
 
@@ -309,6 +326,7 @@ export async function createClass(data: ClassInput): Promise<Class> {
   const query = db.query(
     "INSERT INTO classes (id, name, subject, teacher_id, room_number, schedule, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *"
   );
+  // SAFETY: SQLite RETURNING clause guarantees returning the created class record
   return query.get(
     id,
     data.name,
@@ -328,6 +346,7 @@ export async function createClass(data: ClassInput): Promise<Class> {
  */
 export async function findClassById(id: string): Promise<Class | null> {
   const query = db.query("SELECT * FROM classes WHERE id = ?");
+  // SAFETY: SQLite query returns matching class or null
   return query.get(id) as Class | null;
 }
 
@@ -337,6 +356,7 @@ export async function findClassById(id: string): Promise<Class | null> {
  */
 export async function findAllClasses(): Promise<Class[]> {
   const query = db.query("SELECT * FROM classes");
+  // SAFETY: SQLite query returns array of class records
   return query.all() as Class[];
 }
 
@@ -350,6 +370,7 @@ export async function findClassesByStudentId(studentId: string): Promise<Class[]
     WHERE e.student_id = ? AND e.status = 'active'
     ORDER BY c.name ASC
   `);
+  // SAFETY: SQLite query returns array of classes the student is enrolled in
   return query.all(studentId) as Class[];
 }
 
@@ -362,7 +383,7 @@ export async function findClassesByStudentId(studentId: string): Promise<Class[]
 export async function updateClass(id: string, data: Partial<ClassInput>): Promise<Class | null> {
   const now = new Date().toISOString();
   let updateQuery = "UPDATE classes SET updated_at = ?";
-  const params: any[] = [now];
+  const params: (string | number | null)[] = [now];
 
   for (const [key, value] of Object.entries(data)) {
     if (value !== undefined) {
@@ -375,6 +396,7 @@ export async function updateClass(id: string, data: Partial<ClassInput>): Promis
   params.push(id);
 
   const query = db.query(updateQuery);
+  // SAFETY: SQLite RETURNING clause returns updated class record or null
   return query.get(...params) as Class | null;
 }
 
@@ -402,6 +424,7 @@ export async function createEnrollment(data: EnrollmentInput): Promise<Enrollmen
   const query = db.query(
     "INSERT INTO enrollments (id, student_id, class_id, enrolled_at, status) VALUES (?, ?, ?, ?, ?) RETURNING *"
   );
+  // SAFETY: SQLite RETURNING clause guarantees returning the created enrollment record
   return query.get(id, data.student_id, data.class_id, now, data.status || 'active') as Enrollment;
 }
 
@@ -412,6 +435,7 @@ export async function createEnrollment(data: EnrollmentInput): Promise<Enrollmen
  */
 export async function findEnrollmentById(id: string): Promise<Enrollment | null> {
   const query = db.query("SELECT * FROM enrollments WHERE id = ?");
+  // SAFETY: SQLite query returns matching enrollment or null
   return query.get(id) as Enrollment | null;
 }
 
@@ -421,6 +445,7 @@ export async function findEnrollmentById(id: string): Promise<Enrollment | null>
  */
 export async function findAllEnrollments(): Promise<Enrollment[]> {
   const query = db.query("SELECT * FROM enrollments");
+  // SAFETY: SQLite query returns array of enrollment records
   return query.all() as Enrollment[];
 }
 
@@ -429,6 +454,7 @@ export async function findAllEnrollments(): Promise<Enrollment[]> {
  */
 export async function findEnrollmentsByStudentId(studentId: string): Promise<Enrollment[]> {
   const query = db.query("SELECT * FROM enrollments WHERE student_id = ?");
+  // SAFETY: SQLite query returns array of enrollments for student
   return query.all(studentId) as Enrollment[];
 }
 
@@ -440,7 +466,7 @@ export async function findEnrollmentsByStudentId(studentId: string): Promise<Enr
  */
 export async function updateEnrollment(id: string, data: Partial<EnrollmentInput>): Promise<Enrollment | null> {
   let updateQuery = "UPDATE enrollments SET";
-  const params: any[] = [];
+  const params: (string | number | null)[] = [];
   const updates: string[] = [];
 
   for (const [key, value] of Object.entries(data)) {
@@ -458,6 +484,7 @@ export async function updateEnrollment(id: string, data: Partial<EnrollmentInput
   params.push(id);
 
   const query = db.query(updateQuery);
+  // SAFETY: SQLite RETURNING clause returns updated enrollment record or null
   return query.get(...params) as Enrollment | null;
 }
 
@@ -490,6 +517,7 @@ export async function createAssignment(data: AssignmentInput): Promise<Assignmen
   const query = db.query(
     "INSERT INTO assignments (id, class_id, title, description, type, points_possible, due_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *"
   );
+  // SAFETY: SQLite RETURNING clause guarantees returning the created assignment record
   return query.get(id, data.class_id, data.title, data.description, data.type, data.points_possible, dueDateIso, now, now) as Assignment;
 }
 
@@ -500,6 +528,7 @@ export async function createAssignment(data: AssignmentInput): Promise<Assignmen
  */
 export async function findAssignmentById(id: string): Promise<Assignment | null> {
   const query = db.query("SELECT * FROM assignments WHERE id = ?");
+  // SAFETY: SQLite query returns matching assignment or null
   return query.get(id) as Assignment | null;
 }
 
@@ -509,6 +538,7 @@ export async function findAssignmentById(id: string): Promise<Assignment | null>
  */
 export async function findAllAssignments(): Promise<Assignment[]> {
   const query = db.query("SELECT * FROM assignments");
+  // SAFETY: SQLite query returns array of assignment records
   return query.all() as Assignment[];
 }
 
@@ -521,13 +551,13 @@ export async function findAllAssignments(): Promise<Assignment[]> {
 export async function updateAssignment(id: string, data: Partial<AssignmentInput>): Promise<Assignment | null> {
   const now = new Date().toISOString();
   let updateQuery = "UPDATE assignments SET updated_at = ?";
-  const params: any[] = [now];
+  const params: (string | number | null)[] = [now];
 
   for (const [key, value] of Object.entries(data)) {
     if (value !== undefined) {
-      if (key === 'due_date' && typeof value === 'string') {
+      if (key === 'due_date' && value) {
         // Normalize due_date to include seconds
-        let dueDateIso = value;
+        let dueDateIso = String(value);
         if (!/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(dueDateIso)) {
           dueDateIso += ':00';
         }
@@ -544,6 +574,7 @@ export async function updateAssignment(id: string, data: Partial<AssignmentInput
   params.push(id);
 
   const query = db.query(updateQuery);
+  // SAFETY: SQLite RETURNING clause returns updated assignment record or null
   return query.get(...params) as Assignment | null;
 }
 
@@ -565,6 +596,7 @@ export async function deleteAssignment(id: string): Promise<boolean> {
  */
 export async function findAssignmentsByClassId(classId: string): Promise<Assignment[]> {
   const query = db.query("SELECT * FROM assignments WHERE class_id = ?");
+  // SAFETY: SQLite query returns array of assignments for class
   return query.all(classId) as Assignment[];
 }
 
@@ -581,6 +613,7 @@ export async function createSubmission(data: SubmissionInput): Promise<Submissio
   const query = db.query(
     "INSERT INTO submissions (id, assignment_id, student_id, submitted_at, content, status) VALUES (?, ?, ?, ?, ?, ?) RETURNING *"
   );
+  // SAFETY: SQLite RETURNING clause guarantees returning the created submission record
   return query.get(
     id,
     data.assignment_id,
@@ -598,6 +631,7 @@ export async function createSubmission(data: SubmissionInput): Promise<Submissio
  */
 export async function findSubmissionById(id: string): Promise<Submission | null> {
   const query = db.query("SELECT * FROM submissions WHERE id = ?");
+  // SAFETY: SQLite query returns matching submission or null
   return query.get(id) as Submission | null;
 }
 
@@ -607,6 +641,7 @@ export async function findSubmissionById(id: string): Promise<Submission | null>
  */
 export async function findAllSubmissions(): Promise<Submission[]> {
   const query = db.query("SELECT * FROM submissions");
+  // SAFETY: SQLite query returns array of submission records
   return query.all() as Submission[];
 }
 
@@ -615,6 +650,7 @@ export async function findAllSubmissions(): Promise<Submission[]> {
  */
 export async function findSubmissionsByStudentId(studentId: string): Promise<Submission[]> {
   const query = db.query("SELECT * FROM submissions WHERE student_id = ? ORDER BY submitted_at DESC");
+  // SAFETY: SQLite query returns array of submissions for student
   return query.all(studentId) as Submission[];
 }
 
@@ -626,7 +662,7 @@ export async function findSubmissionsByStudentId(studentId: string): Promise<Sub
  */
 export async function updateSubmission(id: string, data: Partial<SubmissionInput>): Promise<Submission | null> {
   let updateQuery = "UPDATE submissions SET";
-  const params: any[] = [];
+  const params: (string | number | null)[] = [];
   const updates: string[] = [];
 
   for (const [key, value] of Object.entries(data)) {
@@ -644,6 +680,7 @@ export async function updateSubmission(id: string, data: Partial<SubmissionInput
   params.push(id);
 
   const query = db.query(updateQuery);
+  // SAFETY: SQLite RETURNING clause returns updated submission record or null
   return query.get(...params) as Submission | null;
 }
 
@@ -671,6 +708,7 @@ export async function createGrade(data: GradeInput): Promise<Grade> {
   const query = db.query(
     "INSERT INTO grades (id, submission_id, points_earned, feedback, graded_at, graded_by) VALUES (?, ?, ?, ?, ?, ?) RETURNING *"
   );
+  // SAFETY: SQLite RETURNING clause guarantees returning the created grade record
   return query.get(
     id,
     data.submission_id,
@@ -688,6 +726,7 @@ export async function createGrade(data: GradeInput): Promise<Grade> {
  */
 export async function findGradeById(id: string): Promise<Grade | null> {
   const query = db.query("SELECT * FROM grades WHERE id = ?");
+  // SAFETY: SQLite query returns matching grade or null
   return query.get(id) as Grade | null;
 }
 
@@ -697,6 +736,7 @@ export async function findGradeById(id: string): Promise<Grade | null> {
  */
 export async function findAllGrades(): Promise<Grade[]> {
   const query = db.query("SELECT * FROM grades");
+  // SAFETY: SQLite query returns array of grade records
   return query.all() as Grade[];
 }
 
@@ -710,6 +750,7 @@ export async function findGradesByStudentId(studentId: string): Promise<Grade[]>
     WHERE s.student_id = ?
     ORDER BY g.graded_at DESC
   `);
+  // SAFETY: SQLite query returns array of grades for student
   return query.all(studentId) as Grade[];
 }
 
@@ -722,7 +763,7 @@ export async function findGradesByStudentId(studentId: string): Promise<Grade[]>
 export async function updateGrade(id: string, data: Partial<GradeInput>): Promise<Grade | null> {
   const now = new Date().toISOString();
   let updateQuery = "UPDATE grades SET graded_at = ?";
-  const params: any[] = [now];
+  const params: (string | number | null)[] = [now];
 
   for (const [key, value] of Object.entries(data)) {
     if (value !== undefined) {
@@ -735,6 +776,7 @@ export async function updateGrade(id: string, data: Partial<GradeInput>): Promis
   params.push(id);
 
   const query = db.query(updateQuery);
+  // SAFETY: SQLite RETURNING clause returns updated grade record or null
   return query.get(...params) as Grade | null;
 }
 
@@ -762,6 +804,7 @@ export async function createAttendance(data: AttendanceInput): Promise<Attendanc
   const query = db.query(
     "INSERT INTO attendance (id, student_id, class_id, date, status, notes, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *"
   );
+  // SAFETY: SQLite RETURNING clause guarantees returning the created attendance record
   return query.get(
     id,
     data.student_id,
@@ -780,6 +823,7 @@ export async function createAttendance(data: AttendanceInput): Promise<Attendanc
  */
 export async function findAttendanceById(id: string): Promise<Attendance | null> {
   const query = db.query("SELECT * FROM attendance WHERE id = ?");
+  // SAFETY: SQLite query returns matching attendance record or null
   return query.get(id) as Attendance | null;
 }
 
@@ -789,6 +833,7 @@ export async function findAttendanceById(id: string): Promise<Attendance | null>
  */
 export async function findAllAttendances(): Promise<Attendance[]> {
   const query = db.query("SELECT * FROM attendance");
+  // SAFETY: SQLite query returns array of attendance records
   return query.all() as Attendance[];
 }
 
@@ -797,6 +842,7 @@ export async function findAllAttendances(): Promise<Attendance[]> {
  */
 export async function findAttendancesByStudentId(studentId: string): Promise<Attendance[]> {
   const query = db.query("SELECT * FROM attendance WHERE student_id = ? ORDER BY date DESC");
+  // SAFETY: SQLite query returns array of attendance records for student
   return query.all(studentId) as Attendance[];
 }
 
@@ -809,7 +855,7 @@ export async function findAttendancesByStudentId(studentId: string): Promise<Att
 export async function updateAttendance(id: string, data: Partial<AttendanceInput>): Promise<Attendance | null> {
   const now = new Date().toISOString();
   let updateQuery = "UPDATE attendance SET recorded_at = ?";
-  const params: any[] = [now];
+  const params: (string | number | null)[] = [now];
 
   for (const [key, value] of Object.entries(data)) {
     if (value !== undefined) {
@@ -822,6 +868,7 @@ export async function updateAttendance(id: string, data: Partial<AttendanceInput
   params.push(id);
 
   const query = db.query(updateQuery);
+  // SAFETY: SQLite RETURNING clause returns updated attendance record or null
   return query.get(...params) as Attendance | null;
 }
 
@@ -847,16 +894,17 @@ export async function createAnnouncement(data: AnnouncementInput): Promise<Annou
   const now = new Date().toISOString();
   const id = randomUUID();
   // Normalize expires_at to include seconds if provided, otherwise allow null
-  let expiresIso = null;
+  let expiresIso: string | null = null;
   if (data.expires_at) {
     expiresIso = data.expires_at;
-    if (typeof expiresIso === 'string' && !/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(expiresIso)) {
+    if (!/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(expiresIso)) {
       expiresIso = expiresIso + ':00';
     }
   }
   const query = db.query(
     "INSERT INTO announcements (id, class_id, teacher_id, title, content, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *"
   );
+  // SAFETY: SQLite RETURNING clause guarantees returning the created announcement record
   return query.get(
     id,
     data.class_id,
@@ -875,6 +923,7 @@ export async function createAnnouncement(data: AnnouncementInput): Promise<Annou
  */
 export async function findAnnouncementById(id: string): Promise<Announcement | null> {
   const query = db.query("SELECT * FROM announcements WHERE id = ?");
+  // SAFETY: SQLite query returns matching announcement or null
   return query.get(id) as Announcement | null;
 }
 
@@ -884,6 +933,7 @@ export async function findAnnouncementById(id: string): Promise<Announcement | n
  */
 export async function findAllAnnouncements(): Promise<Announcement[]> {
   const query = db.query("SELECT * FROM announcements");
+  // SAFETY: SQLite query returns array of announcement records
   return query.all() as Announcement[];
 }
 
@@ -895,7 +945,7 @@ export async function findAllAnnouncements(): Promise<Announcement[]> {
  */
 export async function updateAnnouncement(id: string, data: Partial<AnnouncementInput>): Promise<Announcement | null> {
   let updateQuery = "UPDATE announcements SET";
-  const params: any[] = [];
+  const params: (string | number | null)[] = [];
   const updates: string[] = [];
 
   for (const [key, value] of Object.entries(data)) {
@@ -903,7 +953,7 @@ export async function updateAnnouncement(id: string, data: Partial<AnnouncementI
       if (key === 'expires_at') {
         // Normalize expires_at to include seconds if provided, otherwise allow null
         if (value) {
-          let expiresIso = value as string;
+          let expiresIso = String(value);
           if (!/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(expiresIso)) {
             expiresIso = expiresIso + ':00';
           }
@@ -928,6 +978,7 @@ export async function updateAnnouncement(id: string, data: Partial<AnnouncementI
   params.push(id);
 
   const query = db.query(updateQuery);
+  // SAFETY: SQLite RETURNING clause returns updated announcement record or null
   return query.get(...params) as Announcement | null;
 }
 
@@ -953,6 +1004,7 @@ export async function storeRefreshToken(data: RefreshTokenInput): Promise<Refres
   const query = db.query(
     "INSERT INTO refresh_tokens (id, user_id, user_type, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING *"
   );
+  // SAFETY: SQLite RETURNING clause guarantees returning the created refresh token record
   return query.get(data.id, data.user_id, data.user_type, data.token_hash, data.expires_at, now) as RefreshToken;
 }
 
@@ -963,6 +1015,7 @@ export async function storeRefreshToken(data: RefreshTokenInput): Promise<Refres
  */
 export async function findRefreshTokenById(id: string): Promise<RefreshToken | null> {
   const query = db.query("SELECT * FROM refresh_tokens WHERE id = ?");
+  // SAFETY: SQLite query returns matching refresh token or null
   return query.get(id) as RefreshToken | null;
 }
 
@@ -974,6 +1027,7 @@ export async function findRefreshTokenById(id: string): Promise<RefreshToken | n
 export async function revokeRefreshToken(id: string): Promise<RefreshToken | null> {
   const now = new Date().toISOString();
   const query = db.query("UPDATE refresh_tokens SET revoked_at = ? WHERE id = ? RETURNING *");
+  // SAFETY: SQLite RETURNING clause returns updated refresh token or null
   return query.get(now, id) as RefreshToken | null;
 }
 
@@ -1001,7 +1055,7 @@ export async function initializeAdminUser(): Promise<void> {
       first_name: "Admin",
       last_name: "User",
       role: "admin"
-    } as any);
+    });
 
     console.log("Admin user created successfully:");
     console.log(`Email: ${adminEmail}`);
@@ -1027,3 +1081,4 @@ function generateSecurePassword(): string {
   }
   return password;
 }
+

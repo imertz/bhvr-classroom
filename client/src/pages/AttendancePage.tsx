@@ -22,7 +22,7 @@ export default function AttendancePage() {
   const deleteAttendanceMutation = useDeleteAttendance();
 
   const loading = loadingAttendances || loadingStudents || loadingClasses;
-  const error = (attendancesError || createAttendanceMutation.error || updateAttendanceMutation.error || deleteAttendanceMutation.error) as Error | null;
+  const error = attendancesError || createAttendanceMutation.error || updateAttendanceMutation.error || deleteAttendanceMutation.error;
 
   const { isAdmin, isTeacher, isStudent } = usePermissions();
   const canManageAttendance = isAdmin || isTeacher;
@@ -229,7 +229,12 @@ export default function AttendancePage() {
                 </label>
                 <select
                   value={formData.status}
-                  onChange={(e) => setFormData({...formData, status: e.target.value as AttendanceInput['status']})}
+                  onChange={(e) => {
+                    const status = e.target.value;
+                    if (status === 'present' || status === 'absent' || status === 'tardy' || status === 'excused') {
+                      setFormData({...formData, status});
+                    }
+                  }}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="present">Present</option>

@@ -14,8 +14,8 @@ export function useTeachers() {
   return useQuery({
     queryKey: teacherKeys.list(),
     queryFn: async (): Promise<Teacher[]> => {
-      const res = await unwrapJson(client.api.teachers.$get());
-      return res.data as Teacher[];
+      const res = await unwrapJson<{ data: Teacher[] }>(client.api.teachers.$get());
+      return res.data;
     },
   });
 }
@@ -24,8 +24,8 @@ export function useTeacher(id?: string) {
   return useQuery({
     queryKey: teacherKeys.detail(id || ''),
     queryFn: async (): Promise<Teacher> => {
-      const res = await unwrapJson(client.api.teachers[':id'].$get({ param: { id: id! } }));
-      return res.data as Teacher;
+      const res = await unwrapJson<{ data: Teacher }>(client.api.teachers[':id'].$get({ param: { id: id! } }));
+      return res.data;
     },
     enabled: Boolean(id),
   });
@@ -35,8 +35,8 @@ export function useCreateTeacher() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: TeacherInput): Promise<Teacher> => {
-      const res = await unwrapJson(client.api.teachers.$post({ json: data }));
-      return res.data as Teacher;
+      const res = await unwrapJson<{ data: Teacher }>(client.api.teachers.$post({ json: data }));
+      return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: teacherKeys.all });
@@ -48,8 +48,8 @@ export function useUpdateTeacher() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<TeacherInput> }): Promise<Teacher> => {
-      const res = await unwrapJson(client.api.teachers[':id'].$put({ param: { id }, json: data }));
-      return res.data as Teacher;
+      const res = await unwrapJson<{ data: Teacher }>(client.api.teachers[':id'].$put({ param: { id }, json: data }));
+      return res.data;
     },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: teacherKeys.all });

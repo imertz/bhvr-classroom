@@ -10,7 +10,7 @@ export default function AssignmentsPage() {
   const deleteAssignmentMutation = useDeleteAssignment();
 
   const loading = loadingAssignments || loadingClasses;
-  const error = (assignmentsError || createAssignmentMutation.error || deleteAssignmentMutation.error) as Error | null;
+  const error = assignmentsError || createAssignmentMutation.error || deleteAssignmentMutation.error;
 
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<AssignmentInput>({
@@ -111,7 +111,12 @@ export default function AssignmentsPage() {
                 </label>
                 <select
                   value={formData.type}
-                  onChange={(e) => setFormData({...formData, type: e.target.value as AssignmentInput['type']})}
+                  onChange={(e) => {
+                    const type = e.target.value;
+                    if (type === 'homework' || type === 'quiz' || type === 'test' || type === 'project') {
+                      setFormData({...formData, type});
+                    }
+                  }}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="homework">Homework</option>

@@ -14,7 +14,7 @@ export default function TeacherFormPage() {
   const updateTeacherMutation = useUpdateTeacher();
 
   const loading = loadingTeacher || createTeacherMutation.isPending || updateTeacherMutation.isPending;
-  const error = (createTeacherMutation.error || updateTeacherMutation.error) as Error | null;
+  const error = createTeacherMutation.error || updateTeacherMutation.error;
 
   const emptyFormData: TeacherInput = {
     email: '',
@@ -51,7 +51,7 @@ export default function TeacherFormPage() {
 
       return {
         id,
-        data: typeof update === 'function' ? update(previousData) : update
+        data: update instanceof Function ? update(previousData) : update
       };
     });
   };

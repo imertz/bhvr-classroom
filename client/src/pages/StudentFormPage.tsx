@@ -14,7 +14,7 @@ export default function StudentFormPage() {
   const updateStudentMutation = useUpdateStudent();
 
   const loading = loadingStudent || createStudentMutation.isPending || updateStudentMutation.isPending;
-  const error = (createStudentMutation.error || updateStudentMutation.error) as Error | null;
+  const error = createStudentMutation.error || updateStudentMutation.error;
 
   const emptyFormData: StudentInput = {
     email: '',
@@ -53,7 +53,7 @@ export default function StudentFormPage() {
 
       return {
         id,
-        data: typeof update === 'function' ? update(previousData) : update
+        data: update instanceof Function ? update(previousData) : update
       };
     });
   };

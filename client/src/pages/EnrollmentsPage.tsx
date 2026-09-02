@@ -20,7 +20,7 @@ export default function EnrollmentsPage() {
   const deleteEnrollmentMutation = useDeleteEnrollment();
 
   const loading = loadingEnrollments || loadingStudents || loadingClasses;
-  const error = (enrollmentsError || createEnrollmentMutation.error || updateEnrollmentMutation.error || deleteEnrollmentMutation.error) as Error | null;
+  const error = enrollmentsError || createEnrollmentMutation.error || updateEnrollmentMutation.error || deleteEnrollmentMutation.error;
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -97,14 +97,14 @@ export default function EnrollmentsPage() {
   };
 
   // Group enrollments by class for better organization
-  const enrollmentsByClass = enrollments.reduce((acc, enrollment) => {
+  const enrollmentsByClass: Record<string, Enrollment[]> = {};
+  for (const enrollment of enrollments) {
     const className = getClassName(enrollment.class_id);
-    if (!acc[className]) {
-      acc[className] = [];
+    if (!enrollmentsByClass[className]) {
+      enrollmentsByClass[className] = [];
     }
-    acc[className].push(enrollment);
-    return acc;
-  }, {} as Record<string, Enrollment[]>);
+    enrollmentsByClass[className].push(enrollment);
+  }
 
   if (loading) {
     return <div className="max-w-6xl mx-auto p-6">Loading enrollments...</div>;
@@ -174,7 +174,12 @@ export default function EnrollmentsPage() {
                 </label>
                 <select
                   value={formData.status}
-                  onChange={(e) => setFormData({...formData, status: e.target.value as NonNullable<EnrollmentInput['status']>})}
+                  onChange={(e) => {
+                    const status = e.target.value;
+                    if (status === 'active' || status === 'dropped' || status === 'completed') {
+                      setFormData({...formData, status});
+                    }
+                  }}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="active">Active</option>

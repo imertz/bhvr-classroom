@@ -14,8 +14,8 @@ export function useGrades() {
   return useQuery({
     queryKey: gradeKeys.list(),
     queryFn: async (): Promise<Grade[]> => {
-      const res = await unwrapJson(client.api.grades.$get());
-      return res.data as Grade[];
+      const res = await unwrapJson<{ data: Grade[] }>(client.api.grades.$get());
+      return res.data;
     },
   });
 }
@@ -24,8 +24,8 @@ export function useGrade(id?: string) {
   return useQuery({
     queryKey: gradeKeys.detail(id || ''),
     queryFn: async (): Promise<Grade> => {
-      const res = await unwrapJson(client.api.grades[':id'].$get({ param: { id: id! } }));
-      return res.data as Grade;
+      const res = await unwrapJson<{ data: Grade }>(client.api.grades[':id'].$get({ param: { id: id! } }));
+      return res.data;
     },
     enabled: Boolean(id),
   });
@@ -35,8 +35,8 @@ export function useCreateGrade() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: GradeInput): Promise<Grade> => {
-      const res = await unwrapJson(client.api.grades.$post({ json: data }));
-      return res.data as Grade;
+      const res = await unwrapJson<{ data: Grade }>(client.api.grades.$post({ json: data }));
+      return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: gradeKeys.all });
@@ -48,8 +48,8 @@ export function useUpdateGrade() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<GradeInput> }): Promise<Grade> => {
-      const res = await unwrapJson(client.api.grades[':id'].$put({ param: { id }, json: data }));
-      return res.data as Grade;
+      const res = await unwrapJson<{ data: Grade }>(client.api.grades[':id'].$put({ param: { id }, json: data }));
+      return res.data;
     },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: gradeKeys.all });

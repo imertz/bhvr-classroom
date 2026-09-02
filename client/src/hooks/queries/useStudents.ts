@@ -14,8 +14,8 @@ export function useStudents() {
   return useQuery({
     queryKey: studentKeys.list(),
     queryFn: async (): Promise<Student[]> => {
-      const res = await unwrapJson(client.api.students.$get());
-      return res.data as Student[];
+      const res = await unwrapJson<{ data: Student[] }>(client.api.students.$get());
+      return res.data;
     },
   });
 }
@@ -24,8 +24,8 @@ export function useStudent(id?: string) {
   return useQuery({
     queryKey: studentKeys.detail(id || ''),
     queryFn: async (): Promise<Student> => {
-      const res = await unwrapJson(client.api.students[':id'].$get({ param: { id: id! } }));
-      return res.data as Student;
+      const res = await unwrapJson<{ data: Student }>(client.api.students[':id'].$get({ param: { id: id! } }));
+      return res.data;
     },
     enabled: Boolean(id),
   });
@@ -35,8 +35,8 @@ export function useCreateStudent() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: StudentInput): Promise<Student> => {
-      const res = await unwrapJson(client.api.students.$post({ json: data }));
-      return res.data as Student;
+      const res = await unwrapJson<{ data: Student }>(client.api.students.$post({ json: data }));
+      return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studentKeys.all });
@@ -48,8 +48,8 @@ export function useUpdateStudent() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<StudentInput> }): Promise<Student> => {
-      const res = await unwrapJson(client.api.students[':id'].$put({ param: { id }, json: data }));
-      return res.data as Student;
+      const res = await unwrapJson<{ data: Student }>(client.api.students[':id'].$put({ param: { id }, json: data }));
+      return res.data;
     },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: studentKeys.all });

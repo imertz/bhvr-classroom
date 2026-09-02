@@ -7,11 +7,11 @@ const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000';
 let isRefreshing = false;
 let requestQueue: Array<{
   resolve: (token: string) => void;
-  reject: (error: unknown) => void;
+  reject: (error: Error) => void;
 }> = [];
 
 const customFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-  const urlStr = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  const urlStr = input instanceof URL ? input.href : input instanceof Request ? input.url : String(input);
   const isAuthEndpoint = (
     urlStr.includes('/auth/login') ||
     urlStr.includes('/auth/teacher/login') ||
@@ -65,7 +65,8 @@ const customFetch = async (input: RequestInfo | URL, init?: RequestInit): Promis
         });
       }
     } catch (refreshError) {
-      requestQueue.forEach(({ reject }) => reject(refreshError));
+      const err = refreshError instanceof Error ? refreshError : new Error(String(refreshError));
+      requestQueue.forEach(({ reject }) => reject(err));
       requestQueue = [];
       useAuthStore.getState().clearAuth();
 
@@ -82,37 +83,52 @@ const customFetch = async (input: RequestInfo | URL, init?: RequestInit): Promis
 };
 
 export const client = hc<AppType>(SERVER_URL, {
-  headers: (): Record<string, string> => {
+  headers: () => {
     const token = useAuthStore.getState().accessToken;
-    const headers: Record<string, string> = {};
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      return { Authorization: `Bearer ${token}` };
     }
-    return headers;
+    // SAFETY: empty object literal satisfies Record<string, string> expected by hc headers callback
+    return {} as Record<string, string>;
   },
   fetch: customFetch,
 });
 
-export async function unwrapJson<T = any>(
-  resPromise: Promise<Response | { ok: boolean; status: number; statusText?: string; json: () => Promise<any> }>
+type ErrorBody = {
+  error?: string | { formErrors?: string[]; fieldErrors?: Record<string, string[]> } | Record<string, string>;
+  message?: string;
+};
+
+export type ApiResponseData = object | string | number | boolean | null;
+
+export interface ApiResponseLike {
+  ok: boolean;
+  status: number;
+  statusText?: string;
+  json(): Promise<ApiResponseData>;
+}
+
+export async function unwrapJson<T>(
+  resPromise: Promise<ApiResponseLike>
 ): Promise<T> {
   const res = await resPromise;
   if (!res.ok) {
     let errorMsg = `Request failed (${res.status})`;
     try {
-      const body = (await res.json()) as { error?: unknown; message?: unknown };
+      // SAFETY: error response body is parsed and checked for error fields
+      const body = (await res.json()) as ErrorBody | null;
       if (body) {
-        if (typeof body.error === 'string') {
-          errorMsg = body.error;
-        } else if (typeof body.message === 'string') {
+        if (body.error && !(body.error instanceof Object)) {
+          errorMsg = String(body.error);
+        } else if (body.message) {
           errorMsg = body.message;
-        } else if (body.error && typeof body.error === 'object') {
-          const errObj = body.error as { formErrors?: string[]; fieldErrors?: Record<string, string[]> };
-          if (errObj.formErrors && errObj.formErrors.length > 0) {
+        } else if (body.error && body.error instanceof Object) {
+          const errObj = body.error;
+          if ('formErrors' in errObj && Array.isArray(errObj.formErrors) && errObj.formErrors.length > 0) {
             errorMsg = errObj.formErrors.join(', ');
-          } else if (errObj.fieldErrors) {
+          } else if ('fieldErrors' in errObj && errObj.fieldErrors && errObj.fieldErrors instanceof Object) {
             const fields = Object.entries(errObj.fieldErrors)
-              .map(([f, errs]) => `${f}: ${errs.join(', ')}`)
+              .map(([f, errs]) => `${f}: ${Array.isArray(errs) ? errs.join(', ') : String(errs)}`)
               .join('; ');
             if (fields) errorMsg = fields;
           } else {
@@ -125,7 +141,9 @@ export async function unwrapJson<T = any>(
     }
     throw new Error(errorMsg);
   }
+  // SAFETY: Server API endpoints return typed response matching generic type parameter T
   return res.json() as Promise<T>;
 }
 
 export default client;
+

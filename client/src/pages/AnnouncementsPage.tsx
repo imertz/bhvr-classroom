@@ -20,7 +20,7 @@ export default function AnnouncementsPage() {
   const deleteAnnouncementMutation = useDeleteAnnouncement();
 
   const loading = loadingAnnouncements || loadingClasses || loadingTeachers;
-  const error = (announcementsError || createAnnouncementMutation.error || updateAnnouncementMutation.error || deleteAnnouncementMutation.error) as Error | null;
+  const error = announcementsError || createAnnouncementMutation.error || updateAnnouncementMutation.error || deleteAnnouncementMutation.error;
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);

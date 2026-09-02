@@ -204,7 +204,8 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
 
     try {
       // Verify refresh token
-      const payload = await verify(refreshToken, AUTH_CONFIG.REFRESH_TOKEN_SECRET, 'HS256') as RefreshTokenPayload
+      // SAFETY: verify validates and parses the JWT token with REFRESH_TOKEN_SECRET into RefreshTokenPayload
+      const payload = (await verify(refreshToken, AUTH_CONFIG.REFRESH_TOKEN_SECRET, 'HS256')) as RefreshTokenPayload
 
       if (payload.type !== 'refresh') {
         throw new Error('Invalid token type')
@@ -248,7 +249,7 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
       const accessToken = await generateAccessToken(user)
 
       return c.json({ accessToken, user })
-    } catch (error) {
+    } catch {
       return c.json({ error: 'Invalid refresh token' }, 401)
     }
   })
@@ -301,7 +302,7 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
       const teacher = await createTeacher({
         ...registrationData,
         role: 'teacher'
-      } as any)
+      })
 
       // Generate tokens for auto-login
       const user: AuthUser = {
@@ -354,9 +355,10 @@ export const authRoutes = new Hono<{ Variables: AuthVariables }>()
     if (refreshToken) {
       // Revoke refresh token in database
       try {
-        const payload = await verify(refreshToken, AUTH_CONFIG.REFRESH_TOKEN_SECRET, 'HS256') as RefreshTokenPayload
+        // SAFETY: verify validates and parses the JWT token with REFRESH_TOKEN_SECRET into RefreshTokenPayload
+        const payload = (await verify(refreshToken, AUTH_CONFIG.REFRESH_TOKEN_SECRET, 'HS256')) as RefreshTokenPayload
         await revokeRefreshToken(payload.tokenId)
-      } catch (error) {
+      } catch {
         // Token might be invalid, but we still want to clear the cookie
       }
     }

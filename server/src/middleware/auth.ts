@@ -17,6 +17,7 @@ export const optionalAuthMiddleware = createMiddleware<{
 
     try {
       await jwtMiddleware(c, async () => {
+        // SAFETY: Hono JWT middleware verifies JWT with ACCESS_TOKEN_SECRET and populates jwtPayload context variable
         const payload = c.get('jwtPayload') as AccessTokenPayload;
         if (payload.type === 'access') {
           c.set('user', payload.user);
@@ -45,6 +46,7 @@ export const requireAuth = createMiddleware<{
 
     try {
       await jwtMiddleware(c, async () => {
+        // SAFETY: Hono JWT middleware verifies JWT with ACCESS_TOKEN_SECRET and populates jwtPayload context variable
         const payload = c.get('jwtPayload') as AccessTokenPayload;
         if (payload.type === 'access') {
           c.set('user', payload.user);

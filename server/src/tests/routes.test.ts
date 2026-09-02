@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeAll } from "bun:test";
 import { app } from "../index";
-import { initializeDatabase, createTeacher, createStudent, createClass } from "../db/database";
+import { initializeDatabase, createTeacher, createStudent } from "../db/database";
 import { generateAccessToken } from "../utils/jwt";
 import type { AuthUser } from "../types/auth";
+import type { Teacher, Student, Class, Enrollment, Assignment, Submission, Grade, Attendance } from "shared";
 
 let adminToken = "";
 let teacherToken = "";
@@ -68,11 +69,12 @@ describe("API Routes & Role-Based Access Control", () => {
     it("should allow public read access to teachers list and not leak password_hash", async () => {
       const res = await app.request("/api/teachers");
       expect(res.status).toBe(200);
-      const body = await res.json() as any;
+      // SAFETY: /api/teachers returns data array of teachers
+      const body = (await res.json()) as { data: Teacher[] };
       expect(Array.isArray(body.data)).toBe(true);
       expect(body.data.length).toBeGreaterThan(0);
       for (const t of body.data) {
-        expect(t.password_hash).toBeUndefined();
+        expect('password_hash' in t).toBe(false);
       }
     });
 
@@ -110,17 +112,19 @@ describe("API Routes & Role-Based Access Control", () => {
       });
 
       expect(res.status).toBe(201);
-      const body = await res.json() as any;
+      // SAFETY: POST /api/teachers returns created teacher in data
+      const body = (await res.json()) as { data: Teacher };
       expect(body.data.first_name).toBe("AdminCreated");
-      expect(body.data.password_hash).toBeUndefined();
+      expect('password_hash' in body.data).toBe(false);
     });
 
     it("should get teacher by ID without leaking password_hash", async () => {
       const res = await app.request(`/api/teachers/${testTeacherId}`);
       expect(res.status).toBe(200);
-      const body = await res.json() as any;
+      // SAFETY: GET /api/teachers/:id returns teacher in data
+      const body = (await res.json()) as { data: Teacher };
       expect(body.data.id).toBe(testTeacherId);
-      expect(body.data.password_hash).toBeUndefined();
+      expect('password_hash' in body.data).toBe(false);
     });
   });
 
@@ -128,20 +132,22 @@ describe("API Routes & Role-Based Access Control", () => {
     it("should allow public read access to students list without leaking password_hash", async () => {
       const res = await app.request("/api/students");
       expect(res.status).toBe(200);
-      const body = await res.json() as any;
+      // SAFETY: GET /api/students returns data array of students
+      const body = (await res.json()) as { data: Student[] };
       expect(Array.isArray(body.data)).toBe(true);
       expect(body.data.length).toBeGreaterThan(0);
       for (const s of body.data) {
-        expect(s.password_hash).toBeUndefined();
+        expect('password_hash' in s).toBe(false);
       }
     });
 
     it("should get student by ID without leaking password_hash", async () => {
       const res = await app.request(`/api/students/${testStudentId}`);
       expect(res.status).toBe(200);
-      const body = await res.json() as any;
+      // SAFETY: GET /api/students/:id returns student in data
+      const body = (await res.json()) as { data: Student };
       expect(body.data.id).toBe(testStudentId);
-      expect(body.data.password_hash).toBeUndefined();
+      expect('password_hash' in body.data).toBe(false);
     });
   });
 
@@ -163,7 +169,8 @@ describe("API Routes & Role-Based Access Control", () => {
       });
 
       expect(res.status).toBe(201);
-      const body = await res.json() as any;
+      // SAFETY: POST /api/classes returns created class in data
+      const body = (await res.json()) as { data: Class };
       expect(body.data.id).toBeDefined();
       expect(body.data.name).toBe("Biology 101");
       testClassId = body.data.id;
@@ -190,8 +197,9 @@ describe("API Routes & Role-Based Access Control", () => {
     it("should list classes", async () => {
       const res = await app.request("/api/classes");
       expect(res.status).toBe(200);
-      const body = await res.json() as any;
-      expect(body.data.some((c: any) => c.id === testClassId)).toBe(true);
+      // SAFETY: GET /api/classes returns data array of classes
+      const body = (await res.json()) as { data: Class[] };
+      expect(body.data.some((c) => c.id === testClassId)).toBe(true);
     });
   });
 
@@ -211,7 +219,8 @@ describe("API Routes & Role-Based Access Control", () => {
       });
 
       expect(res.status).toBe(201);
-      const body = await res.json() as any;
+      // SAFETY: POST /api/enrollments returns created enrollment in data
+      const body = (await res.json()) as { data: Enrollment };
       expect(body.data.student_id).toBe(testStudentId);
       expect(body.data.class_id).toBe(testClassId);
     });
@@ -236,7 +245,8 @@ describe("API Routes & Role-Based Access Control", () => {
       });
 
       expect(res.status).toBe(201);
-      const body = await res.json() as any;
+      // SAFETY: POST /api/assignments returns created assignment in data
+      const body = (await res.json()) as { data: Assignment };
       expect(body.data.id).toBeDefined();
       testAssignmentId = body.data.id;
     });
@@ -259,7 +269,8 @@ describe("API Routes & Role-Based Access Control", () => {
       });
 
       expect(res.status).toBe(201);
-      const body = await res.json() as any;
+      // SAFETY: POST /api/submissions returns created submission in data
+      const body = (await res.json()) as { data: Submission };
       expect(body.data.id).toBeDefined();
       testSubmissionId = body.data.id;
     });
@@ -305,7 +316,8 @@ describe("API Routes & Role-Based Access Control", () => {
       });
 
       expect(res.status).toBe(201);
-      const body = await res.json() as any;
+      // SAFETY: POST /api/grades returns created grade in data
+      const body = (await res.json()) as { data: Grade };
       expect(body.data.points_earned).toBe(95);
     });
 
@@ -314,7 +326,8 @@ describe("API Routes & Role-Based Access Control", () => {
         headers: { Authorization: `Bearer ${studentToken}` }
       });
       expect(res.status).toBe(200);
-      const body = await res.json() as any;
+      // SAFETY: GET /api/grades returns list of grades in data
+      const body = (await res.json()) as { data: Grade[] };
       expect(Array.isArray(body.data)).toBe(true);
       expect(body.data.length).toBeGreaterThanOrEqual(1);
     });
@@ -370,7 +383,8 @@ describe("API Routes & Role-Based Access Control", () => {
       });
 
       expect(res.status).toBe(201);
-      const body = await res.json() as any;
+      // SAFETY: POST /api/attendance returns created attendance in data
+      const body = (await res.json()) as { data: Attendance };
       expect(body.data.status).toBe("present");
     });
 
@@ -379,7 +393,8 @@ describe("API Routes & Role-Based Access Control", () => {
         headers: { Authorization: `Bearer ${studentToken}` }
       });
       expect(res.status).toBe(200);
-      const body = await res.json() as any;
+      // SAFETY: GET /api/attendance returns list of attendance in data
+      const body = (await res.json()) as { data: Attendance[] };
       expect(Array.isArray(body.data)).toBe(true);
       expect(body.data.length).toBeGreaterThanOrEqual(1);
     });
@@ -389,9 +404,11 @@ describe("API Routes & Role-Based Access Control", () => {
         headers: { Authorization: `Bearer ${studentToken}` }
       });
       expect(res.status).toBe(200);
-      const body = await res.json() as any;
+      // SAFETY: GET /api/classes returns list of classes in data
+      const body = (await res.json()) as { data: Class[] };
       expect(Array.isArray(body.data)).toBe(true);
-      expect(body.data.some((c: any) => c.id === testClassId)).toBe(true);
+      expect(body.data.some((c) => c.id === testClassId)).toBe(true);
     });
   });
 });
+

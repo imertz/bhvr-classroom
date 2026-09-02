@@ -20,7 +20,7 @@ export default function SubmissionsPage() {
   const deleteSubmissionMutation = useDeleteSubmission();
 
   const loading = loadingSubmissions || loadingAssignments || loadingStudents;
-  const error = (submissionsError || createSubmissionMutation.error || updateSubmissionMutation.error || deleteSubmissionMutation.error) as Error | null;
+  const error = submissionsError || createSubmissionMutation.error || updateSubmissionMutation.error || deleteSubmissionMutation.error;
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -169,7 +169,12 @@ export default function SubmissionsPage() {
                 </label>
                 <select
                   value={formData.status}
-                  onChange={(e) => setFormData({...formData, status: e.target.value as NonNullable<SubmissionInput['status']>})}
+                  onChange={(e) => {
+                    const status = e.target.value;
+                    if (status === 'submitted' || status === 'graded' || status === 'returned') {
+                      setFormData({...formData, status});
+                    }
+                  }}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="submitted">Submitted</option>

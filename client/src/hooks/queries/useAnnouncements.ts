@@ -14,8 +14,8 @@ export function useAnnouncements() {
   return useQuery({
     queryKey: announcementKeys.list(),
     queryFn: async (): Promise<Announcement[]> => {
-      const res = await unwrapJson(client.api.announcements.$get());
-      return res.data as Announcement[];
+      const res = await unwrapJson<{ data: Announcement[] }>(client.api.announcements.$get());
+      return res.data;
     },
   });
 }
@@ -24,8 +24,8 @@ export function useAnnouncement(id?: string) {
   return useQuery({
     queryKey: announcementKeys.detail(id || ''),
     queryFn: async (): Promise<Announcement> => {
-      const res = await unwrapJson(client.api.announcements[':id'].$get({ param: { id: id! } }));
-      return res.data as Announcement;
+      const res = await unwrapJson<{ data: Announcement }>(client.api.announcements[':id'].$get({ param: { id: id! } }));
+      return res.data;
     },
     enabled: Boolean(id),
   });
@@ -35,8 +35,8 @@ export function useCreateAnnouncement() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: AnnouncementInput): Promise<Announcement> => {
-      const res = await unwrapJson(client.api.announcements.$post({ json: data }));
-      return res.data as Announcement;
+      const res = await unwrapJson<{ data: Announcement }>(client.api.announcements.$post({ json: data }));
+      return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: announcementKeys.all });
@@ -48,8 +48,8 @@ export function useUpdateAnnouncement() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<AnnouncementInput> }): Promise<Announcement> => {
-      const res = await unwrapJson(client.api.announcements[':id'].$put({ param: { id }, json: data }));
-      return res.data as Announcement;
+      const res = await unwrapJson<{ data: Announcement }>(client.api.announcements[':id'].$put({ param: { id }, json: data }));
+      return res.data;
     },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: announcementKeys.all });

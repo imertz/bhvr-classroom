@@ -1,10 +1,16 @@
 import { describe, it, expect, beforeAll } from "bun:test";
 import { app } from "../index";
-import { initializeDatabase, createStudent, findTeacherByEmail } from "../db/database";
+import { initializeDatabase, createStudent } from "../db/database";
 
 beforeAll(() => {
   initializeDatabase();
 });
+
+interface AuthResponse {
+  user?: { email?: string; role?: string };
+  accessToken?: string;
+  error?: string;
+}
 
 describe("Authentication & Authorization API", () => {
   const teacherEmail = `teacher_${Date.now()}@example.com`;
@@ -14,7 +20,6 @@ describe("Authentication & Authorization API", () => {
 
   let teacherToken = "";
   let teacherRefreshTokenCookie = "";
-  let studentToken = "";
 
   it("should register a new teacher", async () => {
     const res = await app.request("/auth/teacher/register", {
@@ -29,13 +34,14 @@ describe("Authentication & Authorization API", () => {
     });
 
     expect(res.status).toBe(201);
-    const body = await res.json() as any;
+    // SAFETY: register response returns AuthResponse json
+    const body = (await res.json()) as AuthResponse;
     expect(body.user).toBeDefined();
-    expect(body.user.email).toBe(teacherEmail);
-    expect(body.user.role).toBe("teacher");
+    expect(body.user?.email).toBe(teacherEmail);
+    expect(body.user?.role).toBe("teacher");
     expect(body.accessToken).toBeDefined();
 
-    teacherToken = body.accessToken;
+    teacherToken = body.accessToken || "";
     const setCookie = res.headers.get("set-cookie");
     if (setCookie) {
       teacherRefreshTokenCookie = setCookie.split(";")[0]!;
@@ -53,7 +59,8 @@ describe("Authentication & Authorization API", () => {
     });
 
     expect(res.status).toBe(401);
-    const body = await res.json() as any;
+    // SAFETY: error response returns AuthResponse json
+    const body = (await res.json()) as AuthResponse;
     expect(body.error).toBe("Invalid credentials");
   });
 
@@ -68,10 +75,11 @@ describe("Authentication & Authorization API", () => {
     });
 
     expect(res.status).toBe(200);
-    const body = await res.json() as any;
-    expect(body.user.email).toBe(teacherEmail);
+    // SAFETY: login response returns AuthResponse json
+    const body = (await res.json()) as AuthResponse;
+    expect(body.user?.email).toBe(teacherEmail);
     expect(body.accessToken).toBeDefined();
-    teacherToken = body.accessToken;
+    teacherToken = body.accessToken || "";
 
     const setCookie = res.headers.get("set-cookie");
     if (setCookie) {
@@ -90,9 +98,10 @@ describe("Authentication & Authorization API", () => {
     });
 
     expect(res.status).toBe(200);
-    const body = await res.json() as any;
-    expect(body.user.email).toBe(teacherEmail);
-    expect(body.user.role).toBe("teacher");
+    // SAFETY: login response returns AuthResponse json
+    const body = (await res.json()) as AuthResponse;
+    expect(body.user?.email).toBe(teacherEmail);
+    expect(body.user?.role).toBe("teacher");
     expect(body.accessToken).toBeDefined();
   });
 
@@ -121,11 +130,11 @@ describe("Authentication & Authorization API", () => {
     });
 
     expect(res.status).toBe(200);
-    const body = await res.json() as any;
-    expect(body.user.email).toBe(studentEmail);
-    expect(body.user.role).toBe("student");
+    // SAFETY: student login response returns AuthResponse json
+    const body = (await res.json()) as AuthResponse;
+    expect(body.user?.email).toBe(studentEmail);
+    expect(body.user?.role).toBe("student");
     expect(body.accessToken).toBeDefined();
-    studentToken = body.accessToken;
 
     // Login via unified /auth/login
     const unifiedRes = await app.request("/auth/login", {
@@ -138,9 +147,10 @@ describe("Authentication & Authorization API", () => {
     });
 
     expect(unifiedRes.status).toBe(200);
-    const unifiedBody = await unifiedRes.json() as any;
-    expect(unifiedBody.user.email).toBe(studentEmail);
-    expect(unifiedBody.user.role).toBe("student");
+    // SAFETY: unified login response returns AuthResponse json
+    const unifiedBody = (await unifiedRes.json()) as AuthResponse;
+    expect(unifiedBody.user?.email).toBe(studentEmail);
+    expect(unifiedBody.user?.role).toBe("student");
   });
 
   it("should return current user data on /auth/me", async () => {
@@ -152,9 +162,10 @@ describe("Authentication & Authorization API", () => {
     });
 
     expect(res.status).toBe(200);
-    const body = await res.json() as any;
-    expect(body.user.email).toBe(teacherEmail);
-    expect(body.user.role).toBe("teacher");
+    // SAFETY: /auth/me response returns AuthResponse json
+    const body = (await res.json()) as AuthResponse;
+    expect(body.user?.email).toBe(teacherEmail);
+    expect(body.user?.role).toBe("teacher");
   });
 
   it("should refresh access token via /auth/refresh with cookie", async () => {
@@ -168,9 +179,10 @@ describe("Authentication & Authorization API", () => {
     });
 
     expect(res.status).toBe(200);
-    const body = await res.json() as any;
+    // SAFETY: refresh response returns AuthResponse json
+    const body = (await res.json()) as AuthResponse;
     expect(body.accessToken).toBeDefined();
-    expect(body.user.email).toBe(teacherEmail);
+    expect(body.user?.email).toBe(teacherEmail);
   });
 
   it("should reject /auth/me with invalid or missing token", async () => {

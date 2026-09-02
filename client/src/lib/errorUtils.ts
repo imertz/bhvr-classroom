@@ -1,22 +1,24 @@
 /**
  * Utility function to extract error message from API errors
  */
-type ErrorWithResponse = {
+export type ApiErrorLike = Error | {
+  message?: string;
   response?: {
     data?: {
-      message?: unknown;
+      message?: string;
     };
   };
-};
+} | null | undefined;
 
-const hasResponse = (error: unknown): error is ErrorWithResponse => (
-  typeof error === 'object' && error !== null
-);
-
-export const getErrorMessage = (error: unknown, defaultMessage: string): string => {
-  if (hasResponse(error) && typeof error.response?.data?.message === 'string') {
-    return error.response.data.message;
+export const getErrorMessage = (error: ApiErrorLike, defaultMessage: string): string => {
+  if (error && 'response' in error && error.response?.data?.message) {
+    return String(error.response.data.message);
   }
 
-  return error instanceof Error && error.message ? error.message : defaultMessage;
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return defaultMessage;
 };
+

@@ -17,7 +17,7 @@ describe('Logger & Observability', () => {
         role: 'teacher',
       };
 
-      const redacted = redactSensitiveData(data) as Record<string, unknown>;
+      const redacted = redactSensitiveData(data);
       expect(redacted.email).toBe('user@example.com');
       expect(redacted.role).toBe('teacher');
       expect(redacted.password).toBe('[REDACTED]');
@@ -42,7 +42,7 @@ describe('Logger & Observability', () => {
         ],
       };
 
-      const redacted = redactSensitiveData(data) as any;
+      const redacted = redactSensitiveData(data);
       expect(redacted.user.id).toBe('123');
       expect(redacted.user.password_hash).toBe('[REDACTED]');
       expect(redacted.user.credentials.refreshToken).toBe('[REDACTED]');
@@ -159,7 +159,7 @@ describe('Logger & Observability', () => {
 
       const headerReqId = res.headers.get('x-request-id');
       expect(headerReqId).toBeDefined();
-      expect(typeof headerReqId).toBe('string');
+      expect(headerReqId).not.toBeNull();
       expect(headerReqId?.length).toBeGreaterThan(0);
     });
 

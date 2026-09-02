@@ -1,5 +1,8 @@
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'silent';
 
+export type LogPrimitive = string | number | boolean | null | undefined | Date;
+export type LogValue = LogPrimitive | LogPrimitive[] | { [key: string]: LogPrimitive };
+
 export interface LogContext {
   requestId?: string;
   userId?: string;
@@ -9,7 +12,7 @@ export interface LogContext {
   method?: string;
   status?: number;
   durationMs?: number;
-  [key: string]: unknown;
+  [key: string]: LogValue;
 }
 
 const LOG_LEVELS: Record<LogLevel, number> = {
@@ -68,25 +71,28 @@ function isSensitiveKey(key: string): boolean {
 /**
  * Recursively redacts sensitive fields from objects.
  */
-export function redactSensitiveData(data: unknown): unknown {
+export function redactSensitiveData<T>(data: T): T {
   if (data === null || data === undefined) return data;
-  if (typeof data !== 'object') return data;
+  if (!(data instanceof Object)) return data;
 
   if (Array.isArray(data)) {
-    return data.map((item) => redactSensitiveData(item));
+    // SAFETY: map retains array type T
+    return data.map((item) => redactSensitiveData(item)) as T;
   }
 
-  const sanitized: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+  const sanitized: Record<string, LogValue> = {};
+  // SAFETY: Object.entries inspects key-value pairs from data object
+  for (const [key, value] of Object.entries(data as Record<string, LogValue>)) {
     if (isSensitiveKey(key)) {
       sanitized[key] = '[REDACTED]';
-    } else if (typeof value === 'object' && value !== null) {
+    } else if (value instanceof Object && value !== null) {
       sanitized[key] = redactSensitiveData(value);
     } else {
       sanitized[key] = value;
     }
   }
-  return sanitized;
+  // SAFETY: sanitized record clones input structure with sensitive values replaced
+  return sanitized as T;
 }
 
 export class Logger {
@@ -105,9 +111,11 @@ export class Logger {
     this.isColorDisabled =
       options?.noColor ?? (!!process.env.NO_COLOR || this.isProduction);
 
+    const envLevel = process.env.LOG_LEVEL;
     const defaultLevel: LogLevel =
-      (process.env.LOG_LEVEL as LogLevel) ||
-      (process.env.NODE_ENV === 'test' ? 'silent' : 'info');
+      envLevel === 'debug' || envLevel === 'info' || envLevel === 'warn' || envLevel === 'error' || envLevel === 'silent'
+        ? envLevel
+        : process.env.NODE_ENV === 'test' ? 'silent' : 'info';
 
     const selectedLevel = options?.level || defaultLevel;
     this.currentLevel = LOG_LEVELS[selectedLevel] ?? LOG_LEVELS.info;
@@ -120,6 +128,7 @@ export class Logger {
 
   public getLevel(): LogLevel {
     const entry = Object.entries(LOG_LEVELS).find(([, val]) => val === this.currentLevel);
+    // SAFETY: entry key is guaranteed to be one of LogLevel keys from LOG_LEVELS
     return (entry?.[0] as LogLevel) || 'info';
   }
 
@@ -163,7 +172,7 @@ export class Logger {
   private output(
     level: LogLevel,
     message: string,
-    error?: Error | unknown,
+    error?: Error,
     context?: LogContext
   ): void {
     if (!this.shouldLog(level)) return;
@@ -171,29 +180,24 @@ export class Logger {
     const mergedContext = redactSensitiveData({
       ...this.baseContext,
       ...context,
-    }) as LogContext;
+    });
 
     const timestamp = new Date().toISOString();
 
     if (this.isProduction) {
-      const logPayload: Record<string, unknown> = {
+      const logPayload = {
         timestamp,
         level,
         message,
         ...mergedContext,
+        error: error
+          ? {
+              name: error.name,
+              message: error.message,
+              stack: error.stack,
+            }
+          : undefined,
       };
-
-      if (error) {
-        if (error instanceof Error) {
-          logPayload.error = {
-            name: error.name,
-            message: error.message,
-            stack: error.stack,
-          };
-        } else {
-          logPayload.error = String(error);
-        }
-      }
 
       const jsonString = JSON.stringify(logPayload);
       if (level === 'error') {
@@ -224,7 +228,7 @@ export class Logger {
         : `${ANSI.magenta}(user: ${mergedContext.role || 'user'}:${mergedContext.userId})${ANSI.reset}`
       : '';
 
-    const statusStr = this.formatStatusColor(mergedContext.status as number | undefined);
+    const statusStr = this.formatStatusColor(mergedContext.status);
 
     const durationStr =
       mergedContext.durationMs !== undefined
@@ -241,7 +245,7 @@ export class Logger {
 
     if (level === 'error') {
       console.error(mainLine);
-      if (error && error instanceof Error && error.stack) {
+      if (error && error.stack) {
         console.error(this.isColorDisabled ? error.stack : `${ANSI.red}${error.stack}${ANSI.reset}`);
       } else if (error) {
         console.error(error);
@@ -267,20 +271,18 @@ export class Logger {
 
   public error(
     message: string,
-    errorOrContext?: Error | unknown | LogContext,
+    errorOrContext?: Error | LogContext,
     context?: LogContext
   ): void {
-    if (
-      errorOrContext instanceof Error ||
-      (typeof errorOrContext === 'object' && errorOrContext !== null && 'stack' in errorOrContext)
-    ) {
+    if (errorOrContext instanceof Error) {
       this.output('error', message, errorOrContext, context);
-    } else if (typeof errorOrContext === 'object' && errorOrContext !== null) {
-      this.output('error', message, undefined, errorOrContext as LogContext);
+    } else if (errorOrContext && errorOrContext instanceof Object) {
+      this.output('error', message, undefined, errorOrContext);
     } else {
-      this.output('error', message, errorOrContext, context);
+      this.output('error', message, undefined, context);
     }
   }
 }
 
 export const logger = new Logger();
+

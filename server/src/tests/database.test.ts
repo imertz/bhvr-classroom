@@ -5,18 +5,13 @@ import {
   findTeacherById,
   findTeacherByEmail,
   updateTeacher,
-  deleteTeacher,
   createStudent,
   findStudentById,
   updateStudent,
   deleteStudent,
   createClass,
-  findClassById,
-  createAssignment,
-  findAssignmentById,
   createAnnouncement,
-  updateAnnouncement,
-  findAnnouncementById
+  updateAnnouncement
 } from "../db/database";
 
 beforeAll(() => {
@@ -35,11 +30,11 @@ describe("Database Layer Operations & Integrity", () => {
 
     expect(teacher.id).toBeDefined();
     expect(teacher.email).toBe(email);
-    expect((teacher as any).password_hash).toBeUndefined();
+    expect('password_hash' in teacher).toBe(false);
 
     const byId = await findTeacherById(teacher.id);
     expect(byId?.email).toBe(email);
-    expect((byId as any)?.password_hash).toBeUndefined();
+    expect(byId ? 'password_hash' in byId : false).toBe(false);
 
     const byEmail = await findTeacherByEmail(email);
     expect(byEmail?.id).toBe(teacher.id);
@@ -61,7 +56,7 @@ describe("Database Layer Operations & Integrity", () => {
     });
 
     expect(updated?.first_name).toBe("Updated");
-    expect((updated as any)?.password_hash).toBeUndefined();
+    expect(updated ? 'password_hash' in updated : false).toBe(false);
     const teacherRecord = await findTeacherByEmail(email);
     expect(teacherRecord?.password_hash).toBeDefined();
     const isNewValid = await Bun.password.verify("NewPassword2!", teacherRecord!.password_hash);

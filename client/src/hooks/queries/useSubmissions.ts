@@ -14,8 +14,8 @@ export function useSubmissions() {
   return useQuery({
     queryKey: submissionKeys.list(),
     queryFn: async (): Promise<Submission[]> => {
-      const res = await unwrapJson(client.api.submissions.$get());
-      return res.data as Submission[];
+      const res = await unwrapJson<{ data: Submission[] }>(client.api.submissions.$get());
+      return res.data;
     },
   });
 }
@@ -24,8 +24,8 @@ export function useSubmission(id?: string) {
   return useQuery({
     queryKey: submissionKeys.detail(id || ''),
     queryFn: async (): Promise<Submission> => {
-      const res = await unwrapJson(client.api.submissions[':id'].$get({ param: { id: id! } }));
-      return res.data as Submission;
+      const res = await unwrapJson<{ data: Submission }>(client.api.submissions[':id'].$get({ param: { id: id! } }));
+      return res.data;
     },
     enabled: Boolean(id),
   });
@@ -35,8 +35,8 @@ export function useCreateSubmission() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: SubmissionInput): Promise<Submission> => {
-      const res = await unwrapJson(client.api.submissions.$post({ json: data }));
-      return res.data as Submission;
+      const res = await unwrapJson<{ data: Submission }>(client.api.submissions.$post({ json: data }));
+      return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: submissionKeys.all });
@@ -48,8 +48,8 @@ export function useUpdateSubmission() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<SubmissionInput> }): Promise<Submission> => {
-      const res = await unwrapJson(client.api.submissions[':id'].$put({ param: { id }, json: data }));
-      return res.data as Submission;
+      const res = await unwrapJson<{ data: Submission }>(client.api.submissions[':id'].$put({ param: { id }, json: data }));
+      return res.data;
     },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: submissionKeys.all });
