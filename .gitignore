@@ -73,82 +73,8 @@ client/.vite/
 server/dist/
 
 # Shared specific
-shared/dist/# Dependencies
-node_modules/
-.pnp
-.pnp.js
-
-# Testing
-coverage/
-*.lcov
-.nyc_output
-
-# Production builds
-dist/
-build/
-*.local
-
-# Misc
-.DS_Store
-*.pem
-
-# Debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Database
-*.sqlite
-*.sqlite3
-*.db
-server/src/db/*.sqlite
-
-# Logs
-logs/
-*.log
-
-# OS files
-Thumbs.db
-
-# Temporary files
-*.tmp
-*.temp
-.cache/
-
-# Bun
-bun.lockb
-
-# TypeScript
-*.tsbuildinfo
-
-# Client specific
-client/dist/
-client/.vite/
-
-# Server specific
-server/dist/
-
-# Shared specific
 shared/dist/
 
-
+# Local agent configs
 .claude/settings.local.json
+
