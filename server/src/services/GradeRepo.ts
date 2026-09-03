@@ -48,16 +48,18 @@ export class GradeRepo extends Context.Service<GradeRepo, {
       const create = Effect.fn("GradeRepo.create")(function*(input: GradeInput) {
         const now = new Date().toISOString();
         const id = randomUUID();
+        const gradedBy = input.graded_by || "";
         const res = yield* withUniqueConstraintConflict(
           sqlite.queryOne<Grade>(
             "INSERT INTO grades (id, submission_id, points_earned, feedback, graded_at, graded_by) VALUES (?, ?, ?, ?, ?, ?) RETURNING *",
-            [id, input.submission_id, input.points_earned, input.feedback ?? null, now, input.graded_by]
+            [id, input.submission_id, input.points_earned, input.feedback ?? null, now, gradedBy]
           ),
           "This submission has already been graded"
         );
         if (!res) {
           return yield* new DatabaseError({ message: "Failed to create grade record" });
         }
+        yield* sqlite.run("UPDATE submissions SET status = 'graded' WHERE id = ?", [input.submission_id]);
         return res;
       });
 
@@ -87,7 +89,11 @@ export class GradeRepo extends Context.Service<GradeRepo, {
       });
 
       const delete_ = Effect.fn("GradeRepo.delete")(function*(id: string) {
+        const grade = yield* findByIdOrNull(id);
         const res = yield* sqlite.run("DELETE FROM grades WHERE id = ?", [id]);
+        if (grade && res.changes > 0) {
+          yield* sqlite.run("UPDATE submissions SET status = 'submitted' WHERE id = ?", [grade.submission_id]);
+        }
         return res.changes > 0;
       });
 

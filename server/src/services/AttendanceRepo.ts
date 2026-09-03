@@ -59,18 +59,22 @@ export class AttendanceRepo extends Context.Service<AttendanceRepo, {
       });
 
       const update = Effect.fn("AttendanceRepo.update")(function*(id: string, input: Partial<AttendanceInput>) {
-        const now = new Date().toISOString();
-        let updateQuery = "UPDATE attendance SET recorded_at = ?";
-        const params: (string | number | null)[] = [now];
+        let updateQuery = "UPDATE attendance SET";
+        const params: (string | number | null)[] = [];
+        const updates: string[] = [];
 
         for (const [key, value] of Object.entries(input)) {
-          if (value !== undefined) {
-            updateQuery += `, ${key.replace(/([A-Z])/g, "_$1").toLowerCase()} = ?`;
+          if (value !== undefined && key !== "recorded_at") {
+            updates.push(`${key.replace(/([A-Z])/g, "_$1").toLowerCase()} = ?`);
             params.push(value);
           }
         }
 
-        updateQuery += " WHERE id = ? RETURNING *";
+        if (updates.length === 0) {
+          return yield* findById(id);
+        }
+
+        updateQuery += ` ${updates.join(", ")} WHERE id = ? RETURNING *`;
         params.push(id);
 
         const res = yield* withUniqueConstraintConflict(

@@ -23,7 +23,7 @@ export const authService = {
    * Effect-based login
    */
   loginEffect(credentials: LoginCredentials): Effect.Effect<LoginResponse, Error> {
-    return unwrapJsonEffect<LoginResponse>(client.auth.login.$post({ json: credentials }), LoginResponse);
+    return unwrapJsonEffect<LoginResponse>(() => client.auth.login.$post({ json: credentials }), LoginResponse);
   },
 
   /**
@@ -37,7 +37,7 @@ export const authService = {
    * Effect-based register
    */
   registerEffect(data: RegistrationData): Effect.Effect<LoginResponse, Error> {
-    return unwrapJsonEffect<LoginResponse>(client.auth.teacher.register.$post({ json: data }), LoginResponse);
+    return unwrapJsonEffect<LoginResponse>(() => client.auth.teacher.register.$post({ json: data }), LoginResponse);
   },
 
   /**
@@ -59,7 +59,7 @@ export const authService = {
    */
   async getCurrentUser(): Promise<AuthResponse> {
     return Effect.runPromise(
-      unwrapJsonEffect<AuthResponse>(client.auth.me.$get(), AuthResponse)
+      unwrapJsonEffect<AuthResponse>(() => client.auth.me.$get(), AuthResponse)
     );
   },
 
@@ -68,7 +68,7 @@ export const authService = {
    */
   async refreshToken(): Promise<RefreshResponse> {
     return Effect.runPromise(
-      unwrapJsonEffect<RefreshResponse>(client.auth.refresh.$post(), RefreshResponse)
+      unwrapJsonEffect<RefreshResponse>(() => client.auth.refresh.$post(), RefreshResponse)
     );
   },
 };

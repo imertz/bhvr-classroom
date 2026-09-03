@@ -149,10 +149,15 @@ export class ClassRepo extends Context.Service<ClassRepo, {
         const totalAnnouncements = announcements.length;
 
         let attendanceRate: number | null = null;
-        const attended = recentAttendance.filter((a) => a.status === "present").length;
-        const totalRecords = recentAttendance.filter((a) => a.status !== "excused").length;
-        if (totalRecords > 0) {
-          attendanceRate = Math.round((attended / totalRecords) * 100);
+        const statsRow = yield* sqlite.queryOne<{ attended: number; total: number }>(
+          `SELECT 
+             COUNT(CASE WHEN status = 'present' THEN 1 END) AS attended,
+             COUNT(CASE WHEN status != 'excused' THEN 1 END) AS total
+           FROM attendance WHERE class_id = ?`,
+          [id]
+        );
+        if (statsRow && statsRow.total > 0) {
+          attendanceRate = Math.round((statsRow.attended / statsRow.total) * 100);
         }
 
         const stats: ClassStats = {
@@ -212,6 +217,19 @@ export class ClassRepo extends Context.Service<ClassRepo, {
       });
 
       const delete_ = Effect.fn("ClassRepo.delete")(function*(id: string) {
+        // Cascading deletion of dependent entities
+        yield* sqlite.run("DELETE FROM announcements WHERE class_id = ?", [id]);
+        yield* sqlite.run("DELETE FROM attendance WHERE class_id = ?", [id]);
+        yield* sqlite.run(
+          "DELETE FROM grades WHERE submission_id IN (SELECT s.id FROM submissions s INNER JOIN assignments a ON s.assignment_id = a.id WHERE a.class_id = ?)",
+          [id]
+        );
+        yield* sqlite.run(
+          "DELETE FROM submissions WHERE assignment_id IN (SELECT id FROM assignments WHERE class_id = ?)",
+          [id]
+        );
+        yield* sqlite.run("DELETE FROM assignments WHERE class_id = ?", [id]);
+        yield* sqlite.run("DELETE FROM enrollments WHERE class_id = ?", [id]);
         const res = yield* sqlite.run("DELETE FROM classes WHERE id = ?", [id]);
         return res.changes > 0;
       });

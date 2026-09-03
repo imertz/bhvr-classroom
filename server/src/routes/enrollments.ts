@@ -15,9 +15,12 @@ export const enrollmentRoutes = new Hono<{ Variables: AuthVariables }>()
    */
   .get('/', async (c) => {
     const user = c.get('user')
+    if (!user) {
+      return c.json({ error: 'Authentication required' }, 401)
+    }
 
     try {
-      if (user?.role === 'student') {
+      if (user.role === 'student') {
         const enrollments = await appRuntime.runPromise(
           EnrollmentRepo.use((repo) => repo.findByStudentId(user.id))
         )
@@ -39,6 +42,11 @@ export const enrollmentRoutes = new Hono<{ Variables: AuthVariables }>()
    */
   .get('/student/:studentId', async (c) => {
     const studentId = c.req.param('studentId')
+    const user = c.get('user')
+
+    if (user?.role === 'student' && user.id !== studentId) {
+      return c.json({ error: "Forbidden: You cannot access other students' enrollments" }, 403)
+    }
 
     try {
       const enrollments = await appRuntime.runPromise(
@@ -56,6 +64,7 @@ export const enrollmentRoutes = new Hono<{ Variables: AuthVariables }>()
    */
   .get('/:id', async (c) => {
     const id = c.req.param('id')
+    const user = c.get('user')
 
     try {
       const enrollment = await appRuntime.runPromise(
@@ -66,6 +75,11 @@ export const enrollmentRoutes = new Hono<{ Variables: AuthVariables }>()
       if (!enrollment) {
         return c.json({ error: 'Enrollment not found' }, 404)
       }
+
+      if (user?.role === 'student' && enrollment.student_id !== user.id) {
+        return c.json({ error: "Forbidden: You cannot access other students' enrollments" }, 403)
+      }
+
       return c.json({ data: enrollment })
     } catch (error) {
       console.error('Error getting enrollment:', error)

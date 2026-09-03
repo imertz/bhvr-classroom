@@ -88,7 +88,7 @@ app.put('/api/announcements/*', requireAuth, requireTeacher)
 app.delete('/api/announcements/*', requireAuth, requireTeacher)
 
 // Enrollments routes - authenticated users can read, teacher/admin for write
-app.get('/api/enrollments/*', optionalAuthMiddleware)
+app.get('/api/enrollments/*', requireAuth)
 app.post('/api/enrollments', requireAuth, requireTeacher)
 app.put('/api/enrollments/*', requireAuth, requireTeacher)
 app.delete('/api/enrollments/*', requireAuth, requireTeacher)
@@ -101,10 +101,14 @@ app.post('/api/submissions', requireAuth, async (c, next) => {
 		return c.json({ error: 'Authentication required' }, 401)
 	}
 	if (user.role === 'student') {
-		const body = await c.req.json()
-		// Ensure student can only submit for themselves
-		if (body.student_id !== user.id) {
-			return c.json({ error: 'You can only submit assignments for yourself.' }, 403)
+		try {
+			const body = await c.req.json()
+			// Ensure student can only submit for themselves if student_id is specified
+			if (body?.student_id && body.student_id !== user.id) {
+				return c.json({ error: 'You can only submit assignments for yourself.' }, 403)
+			}
+		} catch {
+			// Let downstream validator handle invalid JSON
 		}
 	}
 	await next()

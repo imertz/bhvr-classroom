@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { client, unwrapJson } from '../../lib/api';
+import { submissionKeys } from './useSubmissions';
 import type { Grade, GradeInput } from 'shared/dist';
 
 export const gradeKeys = {
@@ -40,6 +41,7 @@ export function useCreateGrade() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: gradeKeys.all });
+      queryClient.invalidateQueries({ queryKey: submissionKeys.all });
     },
   });
 }
@@ -66,6 +68,7 @@ export function useDeleteGrade() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: gradeKeys.all });
+      queryClient.invalidateQueries({ queryKey: submissionKeys.all });
     },
   });
 }

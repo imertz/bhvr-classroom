@@ -47,7 +47,7 @@ export class StudentRepo extends Context.Service<StudentRepo, {
 
       const findByEmail = Effect.fn("StudentRepo.findByEmail")(function*(email: string) {
         return yield* sqlite.queryOne<StudentRecord>(
-          "SELECT * FROM students WHERE email = ?",
+          "SELECT * FROM students WHERE lower(email) = lower(?)",
           [email]
         );
       });
@@ -62,14 +62,16 @@ export class StudentRepo extends Context.Service<StudentRepo, {
       });
 
       const create = Effect.fn("StudentRepo.create")(function*(input: StudentInput) {
+        if (!input.password || input.password.length < 8) {
+          return yield* new DatabaseError({ message: "Password of at least 8 characters is required to create student" });
+        }
+
         const now = new Date().toISOString();
         const id = randomUUID();
-        const passwordHash = input.password
-          ? yield* Effect.tryPromise({
-              try: () => Bun.password.hash(input.password!),
-              catch: (e) => new DatabaseError({ message: "Failed to hash password", cause: e })
-            })
-          : null;
+        const passwordHash = yield* Effect.tryPromise({
+          try: () => Bun.password.hash(input.password!),
+          catch: (e) => new DatabaseError({ message: "Failed to hash password", cause: e })
+        });
         const role = input.role || "student";
 
         const res = yield* withUniqueConstraintConflict(
@@ -120,6 +122,14 @@ export class StudentRepo extends Context.Service<StudentRepo, {
       });
 
       const delete_ = Effect.fn("StudentRepo.delete")(function*(id: string) {
+        yield* sqlite.run("DELETE FROM refresh_tokens WHERE user_id = ? AND user_type = 'student'", [id]);
+        yield* sqlite.run("DELETE FROM attendance WHERE student_id = ?", [id]);
+        yield* sqlite.run(
+          "DELETE FROM grades WHERE submission_id IN (SELECT id FROM submissions WHERE student_id = ?)",
+          [id]
+        );
+        yield* sqlite.run("DELETE FROM submissions WHERE student_id = ?", [id]);
+        yield* sqlite.run("DELETE FROM enrollments WHERE student_id = ?", [id]);
         const res = yield* sqlite.run("DELETE FROM students WHERE id = ?", [id]);
         return res.changes > 0;
       });

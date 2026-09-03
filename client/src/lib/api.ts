@@ -1,5 +1,5 @@
 import { hc } from 'hono/client';
-import { Schema, Effect } from 'effect';
+import { Schema, Effect, Predicate } from 'effect';
 import type { AppType } from 'server/src/client';
 import { useAuthStore } from '../stores/authStore';
 
@@ -50,6 +50,10 @@ const customFetch = async (input: RequestInfo | URL, init?: RequestInit): Promis
     }
 
     const wasAuthenticated = useAuthStore.getState().isAuthenticated;
+    if (!wasAuthenticated) {
+      return res;
+    }
+
     isRefreshing = true;
     try {
       await useAuthStore.getState().refreshAccessToken();
@@ -152,12 +156,13 @@ export async function unwrapJson<T>(
 }
 
 export function unwrapJsonEffect<T>(
-  resPromise: Promise<ApiResponseLike>,
+  resPromise: Promise<ApiResponseLike> | (() => Promise<ApiResponseLike>),
   schema?: Schema.Decoder<T>
 ): Effect.Effect<T, Error> {
   return Effect.tryPromise({
     try: async () => {
-      const data = await unwrapJson<T>(resPromise);
+      const promise = Predicate.isFunction(resPromise) ? resPromise() : resPromise;
+      const data = await unwrapJson<T>(promise);
       if (schema) {
         return Schema.decodeUnknownSync(schema)(data);
       }

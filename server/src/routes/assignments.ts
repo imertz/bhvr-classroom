@@ -5,14 +5,25 @@ import { effectValidator } from '../middleware/validator'
 import { appRuntime } from '../services/AppRuntime'
 import { AssignmentRepo } from '../services/AssignmentRepo'
 
+import type { AuthVariables } from '../types/auth'
+
 const AssignmentUpdateSchema = makePartial(AssignmentInput.fields)
 
-export const assignmentRoutes = new Hono()
+export const assignmentRoutes = new Hono<{ Variables: AuthVariables }>()
   /**
    * List all assignments
    */
   .get('/', async (c) => {
+    const user = c.get('user')
+
     try {
+      if (user?.role === 'student') {
+        const assignments = await appRuntime.runPromise(
+          AssignmentRepo.use((repo) => repo.findByStudentId(user.id))
+        )
+        return c.json({ data: assignments, count: assignments.length })
+      }
+
       const assignments = await appRuntime.runPromise(
         AssignmentRepo.use((repo) => repo.findAll())
       )

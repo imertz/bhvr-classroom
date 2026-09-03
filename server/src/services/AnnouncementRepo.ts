@@ -8,6 +8,7 @@ export class AnnouncementRepo extends Context.Service<AnnouncementRepo, {
   readonly findAll: () => Effect.Effect<Announcement[], DatabaseError>;
   readonly findById: (id: string) => Effect.Effect<Announcement, NotFoundError | DatabaseError>;
   readonly findByIdOrNull: (id: string) => Effect.Effect<Announcement | null, DatabaseError>;
+  readonly findByStudentId: (studentId: string) => Effect.Effect<Announcement[], DatabaseError>;
   readonly create: (input: AnnouncementInput) => Effect.Effect<Announcement, DatabaseError>;
   readonly update: (id: string, input: Partial<AnnouncementInput>) => Effect.Effect<Announcement, NotFoundError | DatabaseError>;
   readonly delete: (id: string) => Effect.Effect<boolean, DatabaseError>;
@@ -97,10 +98,21 @@ export class AnnouncementRepo extends Context.Service<AnnouncementRepo, {
         return res.changes > 0;
       });
 
+      const findByStudentId = Effect.fn("AnnouncementRepo.findByStudentId")(function*(studentId: string) {
+        return yield* sqlite.queryAll<Announcement>(
+          `SELECT a.* FROM announcements a
+           INNER JOIN enrollments e ON a.class_id = e.class_id
+           WHERE e.student_id = ? AND e.status = 'active'
+           ORDER BY a.created_at DESC`,
+          [studentId]
+        );
+      });
+
       return AnnouncementRepo.of({
         findAll,
         findById,
         findByIdOrNull,
+        findByStudentId,
         create,
         update,
         delete: delete_

@@ -89,7 +89,13 @@ export default function StudentFormPage() {
 
         await updateStudentMutation.mutateAsync({ id, data: updateData });
       } else {
-        await createStudentMutation.mutateAsync(submitData);
+        if (!formData.password) {
+          throw new Error('Password is required');
+        }
+        await createStudentMutation.mutateAsync({
+          ...submitData,
+          password: formData.password,
+        });
       }
 
       navigate('/students');
@@ -192,7 +198,7 @@ export default function StudentFormPage() {
               index={6}
               label="Password"
               htmlFor="password"
-              optional
+              optional={isEditing}
               hint={
                 isEditing
                   ? 'Leave blank to keep the current password.'
@@ -205,6 +211,7 @@ export default function StudentFormPage() {
                 name="password"
                 value={formData.password || ''}
                 onChange={handleInputChange}
+                required={!isEditing}
                 minLength={8}
                 className="field"
               />

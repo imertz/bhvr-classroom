@@ -61,17 +61,22 @@ export default function SubmissionsPage() {
     const dataToSubmit: SubmissionInput = {
       ...formData,
       student_id: isStudent && user?.id ? user.id : formData.student_id,
+      status: isStudent ? 'submitted' : formData.status,
     };
 
-    if (editingId) {
-      await updateSubmissionMutation.mutateAsync({ id: editingId, data: dataToSubmit });
-      setEditingId(null);
-    } else {
-      await createSubmissionMutation.mutateAsync(dataToSubmit);
-    }
+    try {
+      if (editingId) {
+        await updateSubmissionMutation.mutateAsync({ id: editingId, data: dataToSubmit });
+        setEditingId(null);
+      } else {
+        await createSubmissionMutation.mutateAsync(dataToSubmit);
+      }
 
-    setShowForm(false);
-    resetForm();
+      setShowForm(false);
+      resetForm();
+    } catch (err) {
+      console.error('Failed to submit:', err);
+    }
   };
 
   const handleEdit = (submission: Submission) => {
@@ -129,7 +134,10 @@ export default function SubmissionsPage() {
     const assignment = assignments.find(a => a.id === assignmentId);
     if (!assignment) return false;
 
-    return new Date(submittedAt) > new Date(assignment.due_date);
+    const dueTime = new Date(assignment.due_date).getTime();
+    const subTime = new Date(submittedAt).getTime();
+    if (isNaN(dueTime) || isNaN(subTime)) return false;
+    return subTime > dueTime;
   };
 
   return (
@@ -206,23 +214,25 @@ export default function SubmissionsPage() {
                 )}
               </Field>
 
-              <Field index={3} label="Status" htmlFor="submission-status">
-                <select
-                  id="submission-status"
-                  value={formData.status}
-                  onChange={(e) => {
-                    const status = e.target.value;
-                    if (status === 'submitted' || status === 'graded' || status === 'returned') {
-                      setFormData({ ...formData, status });
-                    }
-                  }}
-                  className="field field-select"
-                >
-                  <option value="submitted">Submitted</option>
-                  <option value="graded">Graded</option>
-                  <option value="returned">Returned</option>
-                </select>
-              </Field>
+              {!isStudent && (
+                <Field index={3} label="Status" htmlFor="submission-status">
+                  <select
+                    id="submission-status"
+                    value={formData.status}
+                    onChange={(e) => {
+                      const status = e.target.value;
+                      if (status === 'submitted' || status === 'graded' || status === 'returned') {
+                        setFormData({ ...formData, status });
+                      }
+                    }}
+                    className="field field-select"
+                  >
+                    <option value="submitted">Submitted</option>
+                    <option value="graded">Graded</option>
+                    <option value="returned">Returned</option>
+                  </select>
+                </Field>
+              )}
 
               <Field index={4} label="Content" htmlFor="submission-content" className="md:col-span-2">
                 <textarea
@@ -298,6 +308,8 @@ export default function SubmissionsPage() {
                   <RecordActions
                     onEdit={() => handleEdit(submission)}
                     onDelete={() => handleDelete(submission.id)}
+                    canEdit={!isStudent || status !== 'graded'}
+                    canDelete={!isStudent || status !== 'graded'}
                   />
                 )}
               </RecordRow>

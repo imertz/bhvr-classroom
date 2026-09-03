@@ -26,6 +26,7 @@ import {
   ScoreBar,
 } from '../components/ui/record';
 import { usePermissions } from '../hooks/usePermissions';
+import { useAuthStore } from '../stores/authStore';
 import { formatDateTime } from '../lib/utils';
 import type { Grade, GradeInput } from 'shared/dist';
 
@@ -53,6 +54,7 @@ export default function GradesPage() {
   const error = gradesError || createGradeMutation.error || updateGradeMutation.error || deleteGradeMutation.error;
 
   const { isAdmin, isTeacher, isStudent } = usePermissions();
+  const { user } = useAuthStore();
   const canManageGrades = isAdmin || isTeacher;
 
   const [showForm, setShowForm] = useState(false);
@@ -67,15 +69,24 @@ export default function GradesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (editingId) {
-      await updateGradeMutation.mutateAsync({ id: editingId, data: formData });
-      setEditingId(null);
-    } else {
-      await createGradeMutation.mutateAsync(formData);
-    }
+    const submitData: GradeInput = {
+      ...formData,
+      graded_by: isTeacher && user?.id ? user.id : (formData.graded_by || user?.id || ''),
+    };
 
-    setShowForm(false);
-    resetForm();
+    try {
+      if (editingId) {
+        await updateGradeMutation.mutateAsync({ id: editingId, data: submitData });
+        setEditingId(null);
+      } else {
+        await createGradeMutation.mutateAsync(submitData);
+      }
+
+      setShowForm(false);
+      resetForm();
+    } catch (err) {
+      console.error('Failed to submit grade:', err);
+    }
   };
 
   const handleEdit = (grade: Grade) => {
@@ -213,11 +224,13 @@ export default function GradesPage() {
                   className="field field-select"
                 >
                   <option value="">Select a submission</option>
-                  {submissions.map(submission => (
-                    <option key={submission.id} value={submission.id}>
-                      {getSubmissionInfo(submission.id)}
-                    </option>
-                  ))}
+                  {submissions
+                    .filter(s => (editingId ? true : s.status !== 'graded' || s.id === formData.submission_id))
+                    .map(submission => (
+                      <option key={submission.id} value={submission.id}>
+                        {getSubmissionInfo(submission.id)}
+                      </option>
+                    ))}
                 </select>
               </Field>
 
@@ -239,22 +252,24 @@ export default function GradesPage() {
                 )}
               </Field>
 
-              <Field index={3} label="Graded by" htmlFor="grade-teacher">
-                <select
-                  id="grade-teacher"
-                  value={formData.graded_by}
-                  onChange={(e) => setFormData({ ...formData, graded_by: e.target.value })}
-                  required
-                  className="field field-select"
-                >
-                  <option value="">Select a teacher</option>
-                  {teachers.map(teacher => (
-                    <option key={teacher.id} value={teacher.id}>
-                      {teacher.first_name} {teacher.last_name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+              {!isTeacher && (
+                <Field index={3} label="Graded by" htmlFor="grade-teacher">
+                  <select
+                    id="grade-teacher"
+                    value={formData.graded_by}
+                    onChange={(e) => setFormData({ ...formData, graded_by: e.target.value })}
+                    required
+                    className="field field-select"
+                  >
+                    <option value="">Select a teacher</option>
+                    {teachers.map(teacher => (
+                      <option key={teacher.id} value={teacher.id}>
+                        {teacher.first_name} {teacher.last_name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
 
               <Field index={4} label="Feedback" htmlFor="grade-feedback" className="md:col-span-2">
                 <textarea

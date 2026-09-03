@@ -32,7 +32,7 @@ import {
 } from '../components/ui/record';
 import { usePermissions } from '../hooks/usePermissions';
 import { useAuthStore } from '../stores/authStore';
-import { formatDate } from '../lib/utils';
+import { formatDate, formatDateTime, getLocalDateString } from '../lib/utils';
 import type {
   EnrollmentInput,
   AssignmentInput,
@@ -121,15 +121,18 @@ export default function ClassDetailsPage() {
   const [attendanceForm, setAttendanceForm] = useState<AttendanceInput>({
     student_id: '',
     class_id: id || '',
-    date: new Date().toISOString().slice(0, 10),
+    date: getLocalDateString(),
     status: 'present',
     notes: null,
   });
+
+  const [panelError, setPanelError] = useState<string | null>(null);
 
   const loading = loadingDetails;
   const error = detailsError;
 
   const openPanel = (panel: QuickActionPanel, elementId?: string) => {
+    setPanelError(null);
     setActivePanel((prev) => {
       const next = prev === panel ? 'none' : panel;
       if (next !== 'none' && elementId) {
@@ -166,69 +169,89 @@ export default function ClassDetailsPage() {
   const handleEnrollSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id || !enrollForm.student_id) return;
-    await createEnrollmentMutation.mutateAsync({
-      ...enrollForm,
-      class_id: id,
-    });
-    setEnrollForm({ student_id: '', class_id: id, status: 'active' });
-    setActivePanel('none');
-    await refetch();
+    try {
+      await createEnrollmentMutation.mutateAsync({
+        ...enrollForm,
+        class_id: id,
+      });
+      setEnrollForm({ student_id: '', class_id: id, status: 'active' });
+      setPanelError(null);
+      setActivePanel('none');
+      await refetch();
+    } catch (err) {
+      setPanelError(err instanceof Error ? err.message : 'Failed to enroll student');
+    }
   };
 
   const handleAssignmentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id || !assignmentForm.title || !assignmentForm.due_date) return;
-    await createAssignmentMutation.mutateAsync({
-      ...assignmentForm,
-      class_id: id,
-    });
-    setAssignmentForm({
-      class_id: id,
-      title: '',
-      description: '',
-      type: 'homework',
-      points_possible: 100,
-      due_date: '',
-    });
-    setActivePanel('none');
-    await refetch();
+    try {
+      await createAssignmentMutation.mutateAsync({
+        ...assignmentForm,
+        class_id: id,
+      });
+      setAssignmentForm({
+        class_id: id,
+        title: '',
+        description: '',
+        type: 'homework',
+        points_possible: 100,
+        due_date: '',
+      });
+      setPanelError(null);
+      setActivePanel('none');
+      await refetch();
+    } catch (err) {
+      setPanelError(err instanceof Error ? err.message : 'Failed to create assignment');
+    }
   };
 
   const handleAnnouncementSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id || !details || !announcementForm.title || !announcementForm.content) return;
-    await createAnnouncementMutation.mutateAsync({
-      ...announcementForm,
-      class_id: id,
-      teacher_id: details.class.teacher_id || user?.id || '',
-    });
-    setAnnouncementForm({
-      class_id: id,
-      teacher_id: details.class.teacher_id || user?.id || '',
-      title: '',
-      content: '',
-      expires_at: null,
-    });
-    setActivePanel('none');
-    await refetch();
+    try {
+      await createAnnouncementMutation.mutateAsync({
+        ...announcementForm,
+        class_id: id,
+        teacher_id: details.class.teacher_id || user?.id || '',
+      });
+      setAnnouncementForm({
+        class_id: id,
+        teacher_id: details.class.teacher_id || user?.id || '',
+        title: '',
+        content: '',
+        expires_at: null,
+      });
+      setPanelError(null);
+      setActivePanel('none');
+      await refetch();
+    } catch (err) {
+      setPanelError(err instanceof Error ? err.message : 'Failed to post announcement');
+    }
   };
 
   const handleAttendanceSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id || !attendanceForm.student_id || !attendanceForm.date) return;
-    await createAttendanceMutation.mutateAsync({
-      ...attendanceForm,
-      class_id: id,
-    });
-    setAttendanceForm({
-      student_id: '',
-      class_id: id,
-      date: new Date().toISOString().slice(0, 10),
-      status: 'present',
-      notes: null,
-    });
-    setActivePanel('none');
-    await refetch();
+    try {
+      await createAttendanceMutation.mutateAsync({
+        ...attendanceForm,
+        class_id: id,
+      });
+      setAttendanceForm({
+        student_id: '',
+        class_id: id,
+        date: getLocalDateString(),
+        status: 'present',
+        notes: null,
+      });
+      setPanelError(null);
+      setActivePanel('none');
+      await refetch();
+    } catch (err) {
+      setPanelError(err instanceof Error ? err.message : 'Failed to record attendance');
+    }
   };
 
   const handleDeleteEnrollment = async (enrollmentId: string) => {
@@ -465,6 +488,7 @@ export default function ClassDetailsPage() {
             <div id="enroll-panel">
               <RecordPanel eyebrow="Roster Management" title="Enroll Student to Class">
                 <form onSubmit={handleEnrollSubmit}>
+                  {panelError && <p className="mb-4 text-sm text-destructive font-medium">{panelError}</p>}
                   <div className="grid grid-cols-1 gap-x-10 md:grid-cols-2">
                     <Field index={1} label="Student" htmlFor="quick-student">
                       <select
@@ -618,6 +642,7 @@ export default function ClassDetailsPage() {
             <div id="assignment-panel">
               <RecordPanel eyebrow="Coursework" title="Add Class Assignment">
                 <form onSubmit={handleAssignmentSubmit}>
+                  {panelError && <p className="mb-4 text-sm text-destructive font-medium">{panelError}</p>}
                   <div className="grid grid-cols-1 gap-x-10 md:grid-cols-2">
                     <Field index={1} label="Assignment title" htmlFor="quick-assignment-title">
                       <input
@@ -751,7 +776,7 @@ export default function ClassDetailsPage() {
                     </Marker>
                   </Cell>
                   <Cell tone="numeral">{assignment.points_possible} pts</Cell>
-                  <Cell tone="numeral">{formatDate(assignment.due_date)}</Cell>
+                  <Cell tone="numeral">{formatDateTime(assignment.due_date)}</Cell>
                   {canDelete && (
                     <td className="py-4 pr-6 text-right align-middle sm:pr-8 lg:pr-12">
                       <button
@@ -780,6 +805,7 @@ export default function ClassDetailsPage() {
             <div id="announcement-panel">
               <RecordPanel eyebrow="Communication" title="Broadcast Class Announcement">
                 <form onSubmit={handleAnnouncementSubmit}>
+                  {panelError && <p className="mb-4 text-sm text-destructive font-medium">{panelError}</p>}
                   <div className="grid grid-cols-1 gap-x-10 md:grid-cols-2">
                     <Field index={1} label="Announcement title" htmlFor="quick-annc-title" className="md:col-span-2">
                       <input
@@ -902,6 +928,7 @@ export default function ClassDetailsPage() {
             <div id="attendance-panel">
               <RecordPanel eyebrow="Daily Register" title="Record Attendance Entry">
                 <form onSubmit={handleAttendanceSubmit}>
+                  {panelError && <p className="mb-4 text-sm text-destructive font-medium">{panelError}</p>}
                   <div className="grid grid-cols-1 gap-x-10 md:grid-cols-2">
                     <Field index={1} label="Student" htmlFor="quick-attn-student">
                       <select
@@ -1018,7 +1045,7 @@ export default function ClassDetailsPage() {
                   }
                 >
                   <Cell tone="primary">{attn.student_name}</Cell>
-                  <Cell tone="numeral">{attn.date}</Cell>
+                  <Cell tone="numeral">{formatDate(attn.date)}</Cell>
                   <Cell>
                     <Marker tone={ATTENDANCE_STATUS_TONE[attn.status]}>
                       {attn.status}

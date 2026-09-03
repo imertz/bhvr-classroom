@@ -12,7 +12,7 @@ export class Submission extends Schema.Class<Submission>("Submission")({
 
 export class SubmissionInput extends Schema.Class<SubmissionInput>("SubmissionInput")({
   assignment_id: Schema.String,
-  student_id: Schema.String,
+  student_id: Schema.optional(Schema.String),
   content: Schema.optional(Schema.NullOr(Schema.String)),
   status: Schema.optional(Schema.Literals(["submitted", "graded", "returned"])),
 }) {}

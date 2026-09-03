@@ -14,7 +14,7 @@ export class GradeInput extends Schema.Class<GradeInput>("GradeInput")({
   submission_id: Schema.String,
   points_earned: Schema.Int,
   feedback: Schema.optional(Schema.NullOr(Schema.String)),
-  graded_by: Schema.String,
+  graded_by: Schema.optional(Schema.String),
 }) {}
 
 export const GradeSchema = GradeInput;

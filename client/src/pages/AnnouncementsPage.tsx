@@ -20,10 +20,12 @@ import {
 import { ordinal } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '../hooks/usePermissions';
+import { useAuthStore } from '../stores/authStore';
 import type { Announcement, AnnouncementInput } from 'shared/dist';
 
 export default function AnnouncementsPage() {
-  const { canCreate, canEdit, canDelete } = usePermissions();
+  const { isTeacher, canCreate, canEdit, canDelete } = usePermissions();
+  const { user } = useAuthStore();
   const { data: announcements = [], isLoading: loadingAnnouncements, error: announcementsError } = useAnnouncements();
   const { data: classes = [], isLoading: loadingClasses } = useClasses();
   const { data: teachers = [], isLoading: loadingTeachers } = useTeachers();
@@ -48,15 +50,24 @@ export default function AnnouncementsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (editingId) {
-      await updateAnnouncementMutation.mutateAsync({ id: editingId, data: formData });
-      setEditingId(null);
-    } else {
-      await createAnnouncementMutation.mutateAsync(formData);
-    }
+    const dataToSubmit: AnnouncementInput = {
+      ...formData,
+      teacher_id: isTeacher && user?.id ? user.id : (formData.teacher_id || user?.id || ''),
+    };
 
-    setShowForm(false);
-    resetForm();
+    try {
+      if (editingId) {
+        await updateAnnouncementMutation.mutateAsync({ id: editingId, data: dataToSubmit });
+        setEditingId(null);
+      } else {
+        await createAnnouncementMutation.mutateAsync(dataToSubmit);
+      }
+
+      setShowForm(false);
+      resetForm();
+    } catch (err) {
+      console.error('Failed to submit announcement:', err);
+    }
   };
 
   const handleEdit = (announcement: Announcement) => {
@@ -154,22 +165,24 @@ export default function AnnouncementsPage() {
                 </select>
               </Field>
 
-              <Field index={2} label="Teacher" htmlFor="announcement-teacher">
-                <select
-                  id="announcement-teacher"
-                  value={formData.teacher_id}
-                  onChange={(e) => setFormData({ ...formData, teacher_id: e.target.value })}
-                  required
-                  className="field field-select"
-                >
-                  <option value="">Select a teacher</option>
-                  {teachers.map(teacher => (
-                    <option key={teacher.id} value={teacher.id}>
-                      {teacher.first_name} {teacher.last_name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+              {!isTeacher && (
+                <Field index={2} label="Teacher" htmlFor="announcement-teacher">
+                  <select
+                    id="announcement-teacher"
+                    value={formData.teacher_id}
+                    onChange={(e) => setFormData({ ...formData, teacher_id: e.target.value })}
+                    required
+                    className="field field-select"
+                  >
+                    <option value="">Select a teacher</option>
+                    {teachers.map(teacher => (
+                      <option key={teacher.id} value={teacher.id}>
+                        {teacher.first_name} {teacher.last_name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
 
               <Field index={3} label="Title" htmlFor="announcement-title" className="md:col-span-2">
                 <input

@@ -64,7 +64,15 @@ export const submissionRoutes = new Hono<{ Variables: AuthVariables }>()
    * Create new submission
    */
   .post('/', effectValidator('json', SubmissionSchema), async (c) => {
-    const data = c.req.valid('json')
+    const rawData = c.req.valid('json')
+    const user = c.get('user')
+
+    const studentId = user?.role === 'student' ? user.id : (rawData.student_id || user?.id || '')
+    const data: SubmissionInput = {
+      ...rawData,
+      student_id: studentId,
+      status: user?.role === 'student' ? 'submitted' : (rawData.status || 'submitted'),
+    }
 
     try {
       const submission = await appRuntime.runPromise(
@@ -101,8 +109,14 @@ export const submissionRoutes = new Hono<{ Variables: AuthVariables }>()
         if (existing.student_id !== user.id) {
           return c.json({ error: 'Forbidden: You can only edit your own submissions' }, 403)
         }
+        if (existing.status === 'graded') {
+          return c.json({ error: 'Forbidden: Cannot edit an already graded submission' }, 403)
+        }
         if (data.student_id && data.student_id !== user.id) {
           return c.json({ error: 'Forbidden: You cannot transfer submission ownership' }, 403)
+        }
+        if (data.status && data.status !== existing.status) {
+          return c.json({ error: 'Forbidden: Students cannot alter submission status' }, 403)
         }
       }
 
@@ -140,8 +154,13 @@ export const submissionRoutes = new Hono<{ Variables: AuthVariables }>()
       if (!existing) {
         return c.json({ error: 'Submission not found' }, 404)
       }
-      if (user?.role === 'student' && existing.student_id !== user.id) {
-        return c.json({ error: 'Forbidden: You can only delete your own submissions' }, 403)
+      if (user?.role === 'student') {
+        if (existing.student_id !== user.id) {
+          return c.json({ error: 'Forbidden: You can only delete your own submissions' }, 403)
+        }
+        if (existing.status === 'graded') {
+          return c.json({ error: 'Forbidden: Cannot delete an already graded submission' }, 403)
+        }
       }
 
       const deleted = await appRuntime.runPromise(

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { client, unwrapJson } from '../../lib/api';
-import type { Teacher, TeacherInput } from 'shared/dist';
+import type { Teacher, TeacherInput, TeacherCreateInput } from 'shared/dist';
 
 export const teacherKeys = {
   all: ['teachers'] as const,
@@ -34,7 +34,7 @@ export function useTeacher(id?: string) {
 export function useCreateTeacher() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: TeacherInput): Promise<Teacher> => {
+    mutationFn: async (data: TeacherCreateInput): Promise<Teacher> => {
       const res = await unwrapJson<{ data: Teacher }>(client.api.teachers.$post({ json: data }));
       return res.data;
     },

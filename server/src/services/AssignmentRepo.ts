@@ -9,6 +9,7 @@ export class AssignmentRepo extends Context.Service<AssignmentRepo, {
   readonly findById: (id: string) => Effect.Effect<Assignment, NotFoundError | DatabaseError>;
   readonly findByIdOrNull: (id: string) => Effect.Effect<Assignment | null, DatabaseError>;
   readonly findByClassId: (classId: string) => Effect.Effect<Assignment[], DatabaseError>;
+  readonly findByStudentId: (studentId: string) => Effect.Effect<Assignment[], DatabaseError>;
   readonly create: (input: AssignmentInput) => Effect.Effect<Assignment, DatabaseError>;
   readonly update: (id: string, input: Partial<AssignmentInput>) => Effect.Effect<Assignment, NotFoundError | DatabaseError>;
   readonly delete: (id: string) => Effect.Effect<boolean, DatabaseError>;
@@ -89,8 +90,24 @@ export class AssignmentRepo extends Context.Service<AssignmentRepo, {
       });
 
       const delete_ = Effect.fn("AssignmentRepo.delete")(function*(id: string) {
+        // Cascading deletion of dependent grades and submissions
+        yield* sqlite.run(
+          "DELETE FROM grades WHERE submission_id IN (SELECT id FROM submissions WHERE assignment_id = ?)",
+          [id]
+        );
+        yield* sqlite.run("DELETE FROM submissions WHERE assignment_id = ?", [id]);
         const res = yield* sqlite.run("DELETE FROM assignments WHERE id = ?", [id]);
         return res.changes > 0;
+      });
+
+      const findByStudentId = Effect.fn("AssignmentRepo.findByStudentId")(function*(studentId: string) {
+        return yield* sqlite.queryAll<Assignment>(
+          `SELECT a.* FROM assignments a
+           INNER JOIN enrollments e ON a.class_id = e.class_id
+           WHERE e.student_id = ? AND e.status = 'active'
+           ORDER BY a.due_date ASC`,
+          [studentId]
+        );
       });
 
       return AssignmentRepo.of({
@@ -98,6 +115,7 @@ export class AssignmentRepo extends Context.Service<AssignmentRepo, {
         findById,
         findByIdOrNull,
         findByClassId,
+        findByStudentId,
         create,
         update,
         delete: delete_

@@ -14,6 +14,7 @@ import {
   RecordTable,
 } from '../components/ui/record';
 import { usePermissions } from '../hooks/usePermissions';
+import { formatDateTime } from '../lib/utils';
 import type { Assignment, AssignmentInput } from 'shared/dist';
 
 /** Assignment types read as stamps; the graded ones carry more weight. */
@@ -62,10 +63,6 @@ export default function AssignmentsPage() {
     if (confirm('Are you sure you want to delete this assignment?')) {
       await deleteAssignmentMutation.mutateAsync(id);
     }
-  };
-
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
   };
 
   const getClassInfo = (classId: string) => {

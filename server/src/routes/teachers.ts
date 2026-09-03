@@ -1,14 +1,15 @@
 import { Hono } from 'hono'
 import { Effect } from 'effect'
-import { TeacherSchema, TeacherInput, makePartial } from 'shared/dist'
+import { TeacherCreateSchema, TeacherInput, makePartial } from 'shared/dist'
 import { effectValidator } from '../middleware/validator'
 import { appRuntime } from '../services/AppRuntime'
 import { TeacherRepo } from '../services/TeacherRepo'
 import { isConflictError } from '../utils/errors'
+import type { AuthVariables } from '../types/auth'
 
 const TeacherUpdateSchema = makePartial(TeacherInput.fields)
 
-export const teacherRoutes = new Hono()
+export const teacherRoutes = new Hono<{ Variables: AuthVariables }>()
   /**
    * List all teachers
    */
@@ -49,7 +50,7 @@ export const teacherRoutes = new Hono()
   /**
    * Create new teacher
    */
-  .post('/', effectValidator('json', TeacherSchema), async (c) => {
+  .post('/', effectValidator('json', TeacherCreateSchema), async (c) => {
     const data = c.req.valid('json')
 
     try {

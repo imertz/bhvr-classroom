@@ -95,7 +95,8 @@ export const gradeRoutes = new Hono<{ Variables: AuthVariables }>()
     const data = c.req.valid('json')
     const user = c.get('user')
 
-    const gradeData: GradeInput = user?.role === 'teacher' ? { ...data, graded_by: user.id } : data
+    const gradedBy = user?.role === 'teacher' ? user.id : (data.graded_by || user?.id || '')
+    const gradeData: GradeInput = { ...data, graded_by: gradedBy }
 
     try {
       const grade = await appRuntime.runPromise(

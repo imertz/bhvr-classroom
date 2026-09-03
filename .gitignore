@@ -45,7 +45,11 @@ lerna-debug.log*
 *.sqlite
 *.sqlite3
 *.db
+*.sqlite-shm
+*.sqlite-wal
 server/src/db/*.sqlite
+server/src/db/*.sqlite-shm
+server/src/db/*.sqlite-wal
 
 # Logs
 logs/

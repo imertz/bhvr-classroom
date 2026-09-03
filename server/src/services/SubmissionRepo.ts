@@ -88,6 +88,7 @@ export class SubmissionRepo extends Context.Service<SubmissionRepo, {
       });
 
       const delete_ = Effect.fn("SubmissionRepo.delete")(function*(id: string) {
+        yield* sqlite.run("DELETE FROM grades WHERE submission_id = ?", [id]);
         const res = yield* sqlite.run("DELETE FROM submissions WHERE id = ?", [id]);
         return res.changes > 0;
       });

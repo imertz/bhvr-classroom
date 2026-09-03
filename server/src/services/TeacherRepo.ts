@@ -46,7 +46,7 @@ export class TeacherRepo extends Context.Service<TeacherRepo, {
 
       const findByEmail = Effect.fn("TeacherRepo.findByEmail")(function*(email: string) {
         return yield* sqlite.queryOne<TeacherRecord>(
-          "SELECT * FROM teachers WHERE email = ?",
+          "SELECT * FROM teachers WHERE lower(email) = lower(?)",
           [email]
         );
       });
@@ -111,6 +111,25 @@ export class TeacherRepo extends Context.Service<TeacherRepo, {
       });
 
       const delete_ = Effect.fn("TeacherRepo.delete")(function*(id: string) {
+        yield* sqlite.run("DELETE FROM refresh_tokens WHERE user_id = ? AND user_type = 'teacher'", [id]);
+        yield* sqlite.run("DELETE FROM announcements WHERE teacher_id = ?", [id]);
+        const classes = yield* sqlite.queryAll<{ id: string }>("SELECT id FROM classes WHERE teacher_id = ?", [id]);
+        for (const cls of classes) {
+          yield* sqlite.run("DELETE FROM announcements WHERE class_id = ?", [cls.id]);
+          yield* sqlite.run("DELETE FROM attendance WHERE class_id = ?", [cls.id]);
+          yield* sqlite.run(
+            "DELETE FROM grades WHERE submission_id IN (SELECT s.id FROM submissions s INNER JOIN assignments a ON s.assignment_id = a.id WHERE a.class_id = ?)",
+            [cls.id]
+          );
+          yield* sqlite.run(
+            "DELETE FROM submissions WHERE assignment_id IN (SELECT id FROM assignments WHERE class_id = ?)",
+            [cls.id]
+          );
+          yield* sqlite.run("DELETE FROM assignments WHERE class_id = ?", [cls.id]);
+          yield* sqlite.run("DELETE FROM enrollments WHERE class_id = ?", [cls.id]);
+          yield* sqlite.run("DELETE FROM classes WHERE id = ?", [cls.id]);
+        }
+        yield* sqlite.run("DELETE FROM grades WHERE graded_by = ?", [id]);
         const res = yield* sqlite.run("DELETE FROM teachers WHERE id = ?", [id]);
         return res.changes > 0;
       });

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AuthUser } from 'shared/dist';
 import { authService, type LoginCredentials, type RegistrationData } from '../services/authService';
+import { queryClient } from '../lib/queryClient';
 
 interface AuthState {
   user: AuthUser | null;
@@ -54,6 +55,9 @@ export const useAuthStore = create<AuthState>()(
             error: null,
             tokenExpiresAt: expiresAt,
           });
+
+          // Clear cached queries from previous sessions
+          queryClient.clear();
 
           // Start the token refresh timer
           get().startTokenRefreshTimer();
@@ -115,6 +119,9 @@ export const useAuthStore = create<AuthState>()(
             error: null,
             tokenExpiresAt: null,
           });
+
+          // Clear cached queries from previous sessions
+          queryClient.clear();
         }
       },
 
@@ -198,6 +205,7 @@ export const useAuthStore = create<AuthState>()(
           error: null,
           tokenExpiresAt: null,
         });
+        queryClient.clear();
       },
 
       clearError: () => {

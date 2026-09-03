@@ -32,7 +32,7 @@ export default function ClassesPage() {
 
   const getTeacherName = (teacherId: string) => {
     const teacher = teachers.find(t => t.id === teacherId);
-    return teacher ? `${teacher.first_name} ${teacher.last_name}` : teacherId;
+    return teacher ? `${teacher.first_name} ${teacher.last_name}` : 'Unknown Teacher';
   };
 
   const getTeacherEmail = (teacherId: string) => {

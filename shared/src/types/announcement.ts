@@ -13,7 +13,7 @@ export class Announcement extends Schema.Class<Announcement>("Announcement")({
 
 export class AnnouncementInput extends Schema.Class<AnnouncementInput>("AnnouncementInput")({
   class_id: Schema.String,
-  teacher_id: Schema.String,
+  teacher_id: Schema.optional(Schema.String),
   title: Schema.String,
   content: Schema.String,
   expires_at: Schema.optional(Schema.NullOr(Schema.String)),

@@ -24,7 +24,7 @@ import {
   RecordTable,
 } from '../components/ui/record';
 import { usePermissions } from '../hooks/usePermissions';
-import { formatDate } from '../lib/utils';
+import { formatDate, getLocalDateString } from '../lib/utils';
 import type { Attendance, AttendanceInput } from 'shared/dist';
 
 const STATUS_TONE = {
@@ -49,20 +49,12 @@ export default function AttendancePage() {
   const { isAdmin, isTeacher, isStudent } = usePermissions();
   const canManageAttendance = isAdmin || isTeacher;
 
-  const getTodayString = () => {
-    const d = new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<AttendanceInput>({
     student_id: '',
     class_id: '',
-    date: getTodayString(),
+    date: getLocalDateString(),
     status: 'present',
     notes: '',
   });
@@ -87,7 +79,7 @@ export default function AttendancePage() {
     setFormData({
       student_id: attendance.student_id,
       class_id: attendance.class_id,
-      date: attendance.date.split('T')[0] || getTodayString(),
+      date: attendance.date.split('T')[0] || getLocalDateString(),
       status: attendance.status,
       notes: attendance.notes || '',
     });
@@ -98,10 +90,11 @@ export default function AttendancePage() {
     setFormData({
       student_id: '',
       class_id: '',
-      date: getTodayString(),
+      date: getLocalDateString(),
       status: 'present',
       notes: '',
     });
+    setEditingId(null);
   };
 
   const handleDelete = async (id: string) => {
@@ -112,7 +105,6 @@ export default function AttendancePage() {
 
   const closeForm = () => {
     setShowForm(false);
-    setEditingId(null);
     resetForm();
   };
 
@@ -126,11 +118,11 @@ export default function AttendancePage() {
     return class_ ? class_.name : 'Unknown Class';
   };
 
-  const totalDays = attendances.length;
+  const validDays = attendances.filter(a => a.status !== 'excused').length;
   const presentCount = attendances.filter(a => a.status === 'present').length;
   const absentCount = attendances.filter(a => a.status === 'absent').length;
   const tardyCount = attendances.filter(a => a.status === 'tardy' || a.status === 'excused').length;
-  const attendanceRate = totalDays > 0 ? Math.round((presentCount / totalDays) * 100) : 100;
+  const attendanceRate = validDays > 0 ? Math.round((presentCount / validDays) * 100) : 100;
 
   // The rate is the one figure that carries a judgement, so it carries a tone.
   const rateTone = attendanceRate >= 90 ? 'ink' : attendanceRate >= 75 ? 'signal' : 'alert';

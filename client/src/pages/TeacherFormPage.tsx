@@ -77,7 +77,13 @@ export default function TeacherFormPage() {
 
         await updateTeacherMutation.mutateAsync({ id, data: updateData });
       } else {
-        await createTeacherMutation.mutateAsync(formData);
+        if (!formData.password) {
+          throw new Error('Password is required');
+        }
+        await createTeacherMutation.mutateAsync({
+          ...formData,
+          password: formData.password,
+        });
       }
 
       navigate('/teachers');

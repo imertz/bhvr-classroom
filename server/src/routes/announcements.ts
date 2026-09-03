@@ -5,14 +5,25 @@ import { effectValidator } from '../middleware/validator'
 import { appRuntime } from '../services/AppRuntime'
 import { AnnouncementRepo } from '../services/AnnouncementRepo'
 
+import type { AuthVariables } from '../types/auth'
+
 const AnnouncementUpdateSchema = makePartial(AnnouncementInput.fields)
 
-export const announcementRoutes = new Hono()
+export const announcementRoutes = new Hono<{ Variables: AuthVariables }>()
   /**
    * List all announcements
    */
   .get('/', async (c) => {
+    const user = c.get('user')
+
     try {
+      if (user?.role === 'student') {
+        const announcements = await appRuntime.runPromise(
+          AnnouncementRepo.use((repo) => repo.findByStudentId(user.id))
+        )
+        return c.json({ data: announcements, count: announcements.length })
+      }
+
       const announcements = await appRuntime.runPromise(
         AnnouncementRepo.use((repo) => repo.findAll())
       )
@@ -49,7 +60,14 @@ export const announcementRoutes = new Hono()
    * Create new announcement
    */
   .post('/', effectValidator('json', AnnouncementSchema), async (c) => {
-    const data = c.req.valid('json')
+    const rawData = c.req.valid('json')
+    const user = c.get('user')
+
+    const teacherId = user?.role === 'teacher' ? user.id : (rawData.teacher_id || user?.id || '')
+    const data: AnnouncementInput = {
+      ...rawData,
+      teacher_id: teacherId,
+    }
 
     try {
       const announcement = await appRuntime.runPromise(

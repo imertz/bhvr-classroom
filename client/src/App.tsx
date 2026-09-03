@@ -38,8 +38,16 @@ function App() {
             <Route path="classes/:id" element={<ClassDetailsPage />} />
             <Route path="assignments" element={<AssignmentsPage />} />
             <Route path="announcements" element={<AnnouncementsPage />} />
-            <Route path="submissions" element={<SubmissionsPage />} />
-            <Route path="enrollments" element={<EnrollmentsPage />} />
+            <Route path="submissions" element={
+              <ProtectedRoute allowedRoles={['admin', 'teacher', 'student']}>
+                <SubmissionsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="enrollments" element={
+              <ProtectedRoute allowedRoles={['admin', 'teacher']}>
+                <EnrollmentsPage />
+              </ProtectedRoute>
+            } />
             <Route path="attendance" element={
               <ProtectedRoute allowedRoles={['admin', 'teacher', 'student']}>
                 <AttendancePage />

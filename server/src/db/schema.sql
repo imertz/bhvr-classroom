@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS classes (
     schedule TEXT, -- JSON string with schedule info
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    FOREIGN KEY (teacher_id) REFERENCES teachers(id)
+    FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE
 );
 
 -- Enrollments table: Links students to classes
@@ -42,8 +42,8 @@ CREATE TABLE IF NOT EXISTS enrollments (
     class_id TEXT NOT NULL,
     enrolled_at TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'active', -- active, dropped, completed
-    FOREIGN KEY (student_id) REFERENCES students(id),
-    FOREIGN KEY (class_id) REFERENCES classes(id),
+    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+    FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
     UNIQUE(student_id, class_id)
 );
 
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS assignments (
     due_date TEXT NOT NULL,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    FOREIGN KEY (class_id) REFERENCES classes(id)
+    FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE
 );
 
 -- Submissions table: Student assignment submissions
@@ -69,8 +69,8 @@ CREATE TABLE IF NOT EXISTS submissions (
     submitted_at TEXT NOT NULL,
     content TEXT, -- JSON string with submission data
     status TEXT NOT NULL DEFAULT 'submitted', -- submitted, graded, returned
-    FOREIGN KEY (assignment_id) REFERENCES assignments(id),
-    FOREIGN KEY (student_id) REFERENCES students(id),
+    FOREIGN KEY (assignment_id) REFERENCES assignments(id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
     UNIQUE(assignment_id, student_id)
 );
 
@@ -82,8 +82,8 @@ CREATE TABLE IF NOT EXISTS grades (
     feedback TEXT,
     graded_at TEXT NOT NULL,
     graded_by TEXT NOT NULL,
-    FOREIGN KEY (submission_id) REFERENCES submissions(id),
-    FOREIGN KEY (graded_by) REFERENCES teachers(id),
+    FOREIGN KEY (submission_id) REFERENCES submissions(id) ON DELETE CASCADE,
+    FOREIGN KEY (graded_by) REFERENCES teachers(id) ON DELETE CASCADE,
     UNIQUE(submission_id)
 );
 
@@ -96,8 +96,8 @@ CREATE TABLE IF NOT EXISTS attendance (
     status TEXT NOT NULL, -- present, absent, tardy, excused
     notes TEXT,
     recorded_at TEXT NOT NULL,
-    FOREIGN KEY (student_id) REFERENCES students(id),
-    FOREIGN KEY (class_id) REFERENCES classes(id),
+    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+    FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
     UNIQUE(student_id, class_id, date)
 );
 
@@ -110,8 +110,8 @@ CREATE TABLE IF NOT EXISTS announcements (
     content TEXT NOT NULL,
     created_at TEXT NOT NULL,
     expires_at TEXT,
-    FOREIGN KEY (class_id) REFERENCES classes(id),
-    FOREIGN KEY (teacher_id) REFERENCES teachers(id)
+    FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+    FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE
 );
 
 -- Create indexes for common queries
